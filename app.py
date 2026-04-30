@@ -1,0 +1,308 @@
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timedelta
+from functools import wraps
+import json
+import plotly
+import plotly.express as px
+from database import db, User, Expense
+from models import DataAnalyzer
+
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'votre-cle-secrete-ici'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///expenses.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db.init_app(app)
+
+# Login required decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Veuillez vous connecter', 'warning')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Veuillez vous connecter', 'warning')
+            return redirect(url_for('login'))
+        user = User.query.get(session['user_id'])
+        if not user or not user.is_admin:
+            flash('Accès administrateur requis', 'danger')
+            return redirect(url_for('dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Route index - CORRIGÉE
+@app.route('/', methods=['GET'])
+def index():
+    return render_template('index.html')
+
+# Route pour favicon - ÉVITE L'ERREUR 405
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204  # Retourne une réponse vide sans erreur
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        email = request.form['email']
+        
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            flash('Nom d\'utilisateur déjà pris', 'danger')
+            return redirect(url_for('register'))
+        
+        hashed_password = generate_password_hash(password)
+        user = User(username=username, password=hashed_password, email=email, is_admin=False)
+        db.session.add(user)
+        db.session.commit()
+        
+        flash('Inscription réussie ! Connectez-vous', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')  # Utiliser .get() plus sûr
+        password = request.form.get('password')
+        
+        print(f"Tentative de connexion: {username}")  # Debug
+        
+        user = User.query.filter_by(username=username).first()
+        
+        if user:
+            print(f"Utilisateur trouvé: {user.username}")
+            print(f"Mot de passe hashé: {user.password}")
+            print(f"Vérification password: {check_password_hash(user.password, password)}")
+        
+        if user and check_password_hash(user.password, password):
+            session['user_id'] = user.id
+            session['username'] = user.username
+            session['is_admin'] = user.is_admin
+            flash(f'Bienvenue {username} !', 'success')
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Identifiants invalides', 'danger')
+            print("Échec de connexion")
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Déconnecté', 'info')
+    return redirect(url_for('index'))
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    user = User.query.get(session['user_id'])
+    expenses = Expense.query.filter_by(user_id=user.id).order_by(Expense.date.desc()).all()
+    
+    # Statistiques
+    total_expenses = sum(e.amount for e in expenses)
+    avg_expense = total_expenses / len(expenses) if expenses else 0
+    categories = {}
+    for e in expenses:
+        categories[e.category] = categories.get(e.category, 0) + e.amount
+    
+    graph_json = None
+    graph2_json = None
+    
+    if expenses and len(expenses) > 0:
+        try:
+            # Graphique camembert
+            fig = px.pie(
+                values=list(categories.values()), 
+                names=list(categories.keys()), 
+                title="Dépenses par catégorie", 
+                color_discrete_sequence=px.colors.sequential.Purples_r
+            )
+            graph_json = fig.to_json()
+            
+            # Graphique linéaire
+            from collections import defaultdict
+            daily_totals = defaultdict(float)
+            for e in expenses:
+                date_str = e.date.strftime('%Y-%m-%d')
+                daily_totals[date_str] += e.amount
+            
+            dates = sorted(daily_totals.keys())
+            amounts = [daily_totals[d] for d in dates]
+            
+            if dates:
+                fig2 = px.line(
+                    x=dates, 
+                    y=amounts, 
+                    title="Évolution des dépenses", 
+                    labels={'x': 'Date', 'y': 'Montant (Fcfa)'}
+                )
+                fig2.update_traces(line_color='#9b59b6')
+                graph2_json = fig2.to_json()
+        except Exception as e:
+            print(f"Erreur création graphique: {e}")
+    
+    return render_template('dashboard.html', 
+                         user=user, 
+                         expenses=expenses[:10],
+                         total_expenses=total_expenses,
+                         avg_expense=avg_expense,
+                         categories=categories,
+                         graph_json=graph_json,
+                         graph2_json=graph2_json)
+
+@app.route('/add_expense', methods=['GET', 'POST'])
+@login_required
+def add_expense():
+    if request.method == 'POST':
+        amount = float(request.form['amount'])
+        category = request.form['category']
+        description = request.form['description']
+        date_str = request.form.get('date', datetime.now().strftime('%Y-%m-%d'))
+        date = datetime.strptime(date_str, '%Y-%m-%d')
+        
+        expense = Expense(
+            amount=amount,
+            category=category,
+            description=description,
+            date=date,
+            user_id=session['user_id']
+        )
+        db.session.add(expense)
+        db.session.commit()
+        
+        flash('Dépense ajoutée avec succès !', 'success')
+        return redirect(url_for('dashboard'))
+    
+    return render_template('add_expense.html')
+
+@app.route('/admin')
+@admin_required
+def admin():
+    return render_template('admin.html')
+
+@app.route('/api/analysis/simple_regression')
+@admin_required
+def simple_regression():
+    result = DataAnalyzer.linear_regression_simple()
+    return jsonify(result if result else {'error': 'Pas assez de données'})
+
+@app.route('/api/analysis/multiple_regression')
+@admin_required
+def multiple_regression():
+    result = DataAnalyzer.linear_regression_multiple()
+    return jsonify(result if result else {'error': 'Pas assez de données'})
+
+@app.route('/api/analysis/pca')
+@admin_required
+def pca_analysis():
+    result = DataAnalyzer.pca_analysis()
+    return jsonify(result if result else {'error': 'Pas assez de données'})
+
+@app.route('/api/analysis/supervised')
+@admin_required
+def supervised_classification():
+    result = DataAnalyzer.supervised_classification()
+    return jsonify(result if result else {'error': 'Pas assez de données'})
+
+@app.route('/api/analysis/unsupervised')
+@admin_required
+def unsupervised_classification():
+    result = DataAnalyzer.unsupervised_classification()
+    return jsonify(result if result else {'error': 'Pas assez de données'})
+
+@app.route('/analysis')
+@admin_required
+def analysis():
+    return render_template('analysis.html')
+
+@app.route('/api/users_stats')
+@admin_required
+def users_stats():
+    users = User.query.all()
+    stats = []
+    for user in users:
+        expenses = Expense.query.filter_by(user_id=user.id).all()
+        total = sum(e.amount for e in expenses)
+        stats.append({
+            'username': user.username,
+            'expenses_count': len(expenses),
+            'total_amount': total,
+            'avg_amount': total / len(expenses) if expenses else 0
+        })
+    return jsonify(stats)
+
+@app.route('/api/categories_stats')
+@admin_required
+def categories_stats():
+    expenses = Expense.query.all()
+    categories = {}
+    for exp in expenses:
+        categories[exp.category] = categories.get(exp.category, 0) + 1
+    return jsonify(categories)
+
+# Middleware pour gérer les requêtes OPTIONS (CORS)
+@app.before_request
+def handle_options():
+    if request.method == 'OPTIONS':
+        response = app.make_default_options_response()
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        return response
+
+# Création des tables
+with app.app_context():
+    db.create_all()
+    
+    # Créer admin si n'existe pas
+    admin = User.query.filter_by(username='admin').first()
+    if not admin:
+        admin = User(
+            username='admin',
+            password=generate_password_hash('admin123'),
+            email='admin@finance.com',
+            is_admin=True
+        )
+        db.session.add(admin)
+        db.session.commit()
+        print("✅ Compte admin créé: admin/admin123")
+    
+    # Créer utilisateur test
+    test_user = User.query.filter_by(username='testuser').first()
+    if not test_user:
+        test_user = User(
+            username='testuser',
+            password=generate_password_hash('test123'),
+            email='test@email.com',
+            is_admin=False
+        )
+        db.session.add(test_user)
+        db.session.commit()
+        
+        # Ajouter données de test
+        categories_list = ['Alimentation', 'Transport', 'Loisirs', 'Santé', 'Shopping', 'Factures']
+        for i in range(50):
+            expense = Expense(
+                amount=10 + (i * 5) % 150,
+                category=categories_list[i % len(categories_list)],
+                description=f'Dépense test {i+1}',
+                date=datetime.now() - timedelta(days=i),
+                user_id=test_user.id
+            )
+            db.session.add(expense)
+        db.session.commit()
+        print("✅ Données de test créées")
+
+if __name__ == '__main__':
+    app.run(debug=True, host='127.0.0.1', port=5050)

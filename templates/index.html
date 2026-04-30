@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row min-vh-100 align-items-center">
+    <div class="col-lg-6 mb-4">
+        <div class="card p-5">
+            <h1 class="display-4" style="color: #6a1b9a;">
+                <i class="fas fa-chart-line"></i> FinanceTracker
+            </h1>
+            <h2 class="mb-4" style="color: #2e7d32;">Gérez vos dépenses intelligemment</h2>
+            <p class="lead">Application complète de gestion des dépenses quotidiennes avec analyses avancées :</p>
+            <ul class="list-unstyled">
+                <li><i class="fas fa-check-circle text-success"></i> Suivi des dépenses par catégorie</li>
+                <li><i class="fas fa-check-circle text-success"></i> Tableaux de bord interactifs</li>
+                <li><i class="fas fa-check-circle text-success"></i> Analyses statistiques avancées</li>
+                <li><i class="fas fa-check-circle text-success"></i> Prédictions et tendances</li>
+                <li><i class="fas fa-check-circle text-success"></i> Interface administrateur complète</li>
+            </ul>
+            <div class="mt-4">
+                <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg me-3">
+                    <i class="fas fa-user-plus"></i> Commencer gratuitement
+                </a>
+                <a href="{{ url_for('login') }}" class="btn btn-outline-primary btn-lg">
+                    <i class="fas fa-sign-in-alt"></i> Se connecter
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card p-4">
+            <h3 class="text-center mb-4" style="color: #6a1b9a;">Dernières statistiques</h3>
+            <div id="previewChart"></div>
+            <div class="row mt-3 text-center">
+                <div class="col-md-4">
+                    <div class="stat-card p-3">
+                        <i class="fas fa-users fa-2x" style="color: #6a1b9a;"></i>
+                        <h4>Utilisateurs actifs</h4>
+                        <p class="h2" id="userCount">-</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card p-3">
+                        <i class="fas fa-chart-line fa-2x" style="color: #2e7d32;"></i>
+                        <h4>Total dépenses</h4>
+                        <p class="h2" id="totalAmount">-</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-card p-3">
+                        <i class="fas fa-chart-pie fa-2x" style="color: #9c27b0;"></i>
+                        <h4>Catégories</h4>
+                        <p class="h2" id="categoryCount">-</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Simuler quelques statistiques pour la page d'accueil
+    document.getElementById('userCount').innerText = '12';
+    document.getElementById('totalAmount').innerText = '2450Fcfa';
+    document.getElementById('categoryCount').innerText = '6';
+    
+    // Petit graphique de démonstration
+    var trace = {
+        x: ['Jan', 'Fev', 'Mar', 'Avr', 'Mai', 'Juin'],
+        y: [320, 450, 380, 520, 480, 610],
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: {color: '#9b59b6', width: 3},
+        marker: {color: '#2ecc71', size: 8}
+    };
+    var layout = {
+        title: 'Évolution mensuelle (exemple)',
+        xaxis: {title: 'Mois'},
+        yaxis: {title: 'Montant (Fcfa)'},
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        paper_bgcolor: 'rgba(0,0,0,0)'
+    };
+    Plotly.newPlot('previewChart', [trace], layout);
+</script>
+{% endblock %}

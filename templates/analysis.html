@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header" style="background: linear-gradient(135deg, #6a1b9a, #9c27b0); color: white;">
+                <h3><i class="fas fa-microscope"></i> Analyses Avancées des Données</h3>
+                <p>Machine Learning & Data Science appliqués à vos finances</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 1. Régression Linéaire Simple -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5><i class="fas fa-chart-line"></i> 1. Régression Linéaire Simple</h5>
+            </div>
+            <div class="card-body">
+                <div id="simpleRegressionResult"></div>
+                <button class="btn btn-sm btn-primary mt-2" onclick="loadSimpleRegression()">
+                    <i class="fas fa-play"></i> Exécuter l'analyse
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 2. Régression Linéaire Multiple -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-success text-white">
+                <h5><i class="fas fa-chart-line"></i> 2. Régression Linéaire Multiple</h5>
+            </div>
+            <div class="card-body">
+                <div id="multipleRegressionResult"></div>
+                <button class="btn btn-sm btn-success mt-2" onclick="loadMultipleRegression()">
+                    <i class="fas fa-play"></i> Exécuter l'analyse
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 3. Techniques de réduction de dimensionnalité (PCA) -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5><i class="fas fa-compress-alt"></i> 3. Analyse en Composantes Principales (PCA)</h5>
+            </div>
+            <div class="card-body">
+                <div id="pcaResult"></div>
+                <div id="pcaChart" style="height: 400px;"></div>
+                <button class="btn btn-sm btn-info mt-2" onclick="loadPCA()">
+                    <i class="fas fa-play"></i> Réduire la dimensionnalité
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 4. Classification Supervisée -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <h5><i class="fas fa-brain"></i> 4. Classification Supervisée</h5>
+            </div>
+            <div class="card-body">
+                <div id="supervisedResult"></div>
+                <button class="btn btn-sm btn-warning mt-2" onclick="loadSupervised()">
+                    <i class="fas fa-play"></i> Exécuter Random Forest
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 5. Classification Non-Supervisée -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5><i class="fas fa-chart-pie"></i> 5. Classification Non-Supervisée</h5>
+            </div>
+            <div class="card-body">
+                <div id="unsupervisedResult"></div>
+                <div id="clusterChart" style="height: 300px;"></div>
+                <button class="btn btn-sm btn-danger mt-2" onclick="loadUnsupervised()">
+                    <i class="fas fa-play"></i> Exécuter KMeans Clustering
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Régression simple
+    function loadSimpleRegression() {
+        $.get('/api/analysis/simple_regression', function(data) {
+            if (data.error) {
+                $('#simpleRegressionResult').html(`<div class="alert alert-warning">${data.error}</div>`);
+                return;
+            }
+            let html = `
+                <div class="alert alert-info">
+                    <strong>Coefficient:</strong> ${data.coefficient.toFixed(4)}<br>
+                    <strong>Intercept:</strong> ${data.intercept.toFixed(2)}<br>
+                    <strong>R² Score:</strong> ${data.r2_score.toFixed(4)}<br>
+                    <strong>Interprétation:</strong> Chaque jour supplémentaire augmente/réduit la dépense de ${Math.abs(data.coefficient).toFixed(2)}Fcfa
+                </div>
+                <h6>Dernières prédictions vs réel:</h6>
+                <table class="table table-sm">
+                    <tr><th>Prédit</th><th>Réel</th></tr>
+                    ${data.predictions.map((p, i) => `<tr><td>${p.toFixed(2)}Fcfa</td><td>${data.actual[i]}Fcfa</td></tr>`).join('')}
+                </table>
+            `;
+            $('#simpleRegressionResult').html(html);
+        });
+    }
+    
+    // 2. Régression multiple
+    function loadMultipleRegression() {
+        $.get('/api/analysis/multiple_regression', function(data) {
+            if (data.error) {
+                $('#multipleRegressionResult').html(`<div class="alert alert-warning">${data.error}</div>`);
+                return;
+            }
+            let html = `
+                <div class="alert alert-success">
+                    <strong>R² Score:</strong> ${data.r2_score.toFixed(4)}<br>
+                    <strong>Intercept:</strong> ${data.intercept.toFixed(2)}<br>
+                    <strong>Coefficients:</strong><br>
+                    ${Object.entries(data.coefficients).map(([k, v]) => `&nbsp;&nbsp;• ${k}: ${v.toFixed(4)}<br>`).join('')}
+                </div>
+            `;
+            $('#multipleRegressionResult').html(html);
+        });
+    }
+    
+    // 3. PCA
+    function loadPCA() {
+        $.get('/api/analysis/pca', function(data) {
+            if (data.error) {
+                $('#pcaResult').html(`<div class="alert alert-warning">${data.error}</div>`);
+                return;
+            }
+            let html = `
+                <div class="alert alert-info">
+                    <strong>Variance expliquée par PC1:</strong> ${(data.explained_variance_ratio[0] * 100).toFixed(2)}%<br>
+                    <strong>Variance expliquée par PC2:</strong> ${(data.explained_variance_ratio[1] * 100).toFixed(2)}%<br>
+                    <strong>Variance cumulée:</strong> ${(data.cumulative_variance[1] * 100).toFixed(2)}%
+                </div>
+            `;
+            $('#pcaResult').html(html);
+            
+            // Graphique PCA
+            let points = data.transformed_data;
+            let trace = {
+                x: points.map(p => p[0]),
+                y: points.map(p => p[1]),
+                mode: 'markers',
+                type: 'scatter',
+                marker: {
+                    size: 10,
+                    color: '#9b59b6',
+                    colorscale: 'Viridis'
+                }
+            };
+            let layout = {
+                title: 'Projection PCA des dépenses',
+                xaxis: {title: 'Première composante principale'},
+                yaxis: {title: 'Deuxième composante principale'},
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+            Plotly.newPlot('pcaChart', [trace], layout);
+        });
+    }
+    
+    // 4. Classification supervisée
+    function loadSupervised() {
+        $.get('/api/analysis/supervised', function(data) {
+            if (data.error) {
+                $('#supervisedResult').html(`<div class="alert alert-warning">${data.error}</div>`);
+                return;
+            }
+            let accuracyPercent = (data.accuracy * 100).toFixed(2);
+            let color = data.accuracy > 0.8 ? 'success' : (data.accuracy > 0.6 ? 'warning' : 'danger');
+            let html = `
+                <div class="alert alert-${color}">
+                    <strong>Accuracy du modèle:</strong> ${accuracyPercent}%<br>
+                    <strong>Nombre d'échantillons:</strong> ${data.n_samples}<br>
+                    <strong>Catégories prédites:</strong> ${data.categories.join(', ')}<br>
+                    <strong>Importance des features:</strong><br>
+                    ${Object.entries(data.feature_importance).map(([k, v]) => `&nbsp;&nbsp;• ${k}: ${(v * 100).toFixed(2)}%<br>`).join('')}
+                </div>
+                ${data.accuracy > 0.8 ? '<div class="alert alert-success">✓ Excellent modèle de prédiction des catégories de dépenses !</div>' : ''}
+            `;
+            $('#supervisedResult').html(html);
+        });
+    }
+    
+    // 5. Classification non-supervisée
+    function loadUnsupervised() {
+        $.get('/api/analysis/unsupervised', function(data) {
+            if (data.error) {
+                $('#unsupervisedResult').html(`<div class="alert alert-warning">${data.error}</div>`);
+                return;
+            }
+            let silhouetteScore = data.silhouette_score.toFixed(4);
+            let quality = silhouetteScore > 0.5 ? 'bon' : (silhouetteScore > 0.2 ? 'moyen' : 'faible');
+            let html = `
+                <div class="alert alert-info">
+                    <strong>Nombre de clusters:</strong> ${data.n_clusters}<br>
+                    <strong>Score de silhouette:</strong> ${silhouetteScore} (${quality})<br>
+                    <strong>Distribution des clusters:</strong> ${data.cluster_distribution.join(', ')}
+                </div>
+            `;
+            $('#unsupervisedResult').html(html);
+            
+            // Simuler des données pour le graphique (utilisons les vraies données si disponibles)
+            let trace = {
+                x: data.cluster_distribution,
+                y: data.cluster_distribution,
+                mode: 'markers+text',
+                type: 'scatter',
+                text: data.cluster_distribution.map((v, i) => `Cluster ${i+1}: ${v} dépenses`),
+                marker: {
+                    size: data.cluster_distribution.map(v => v * 5),
+                    color: ['#6a1b9a', '#2e7d32', '#9c27b0', '#66bb6a']
+                }
+            };
+            let layout = {
+                title: 'Visualisation des clusters',
+                xaxis: {title: 'Cluster'},
+                yaxis: {title: 'Taille'},
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                showlegend: false
+            };
+            Plotly.newPlot('clusterChart', [trace], layout);
+        });
+    }
+    
+    // Chargement automatique au démarrage
+    $(document).ready(function() {
+        loadSimpleRegression();
+        loadMultipleRegression();
+        loadPCA();
+        loadSupervised();
+        loadUnsupervised();
+    });
+</script>
+{% endblock %}

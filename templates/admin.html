@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header" style="background: linear-gradient(135deg, #6a1b9a, #9c27b0); color: white;">
+                <h4><i class="fas fa-user-shield"></i> Panel Administrateur</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="d-grid">
+                            <a href="{{ url_for('analysis') }}" class="btn btn-primary btn-lg">
+                                <i class="fas fa-chart-line"></i><br>
+                                Analyses Avancées
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="d-grid">
+                            <button class="btn btn-success btn-lg" onclick="loadUserStats()">
+                                <i class="fas fa-users"></i><br>
+                                Statistiques Users
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="d-grid">
+                            <button class="btn btn-info btn-lg" onclick="loadCategoryStats()">
+                                <i class="fas fa-chart-pie"></i><br>
+                                Stats Catégories
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="d-grid">
+                            <button class="btn btn-warning btn-lg" onclick="location.reload()">
+                                <i class="fas fa-sync-alt"></i><br>
+                                Rafraîchir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-users"></i> Statistiques utilisateurs</h5>
+            </div>
+            <div class="card-body">
+                <div id="userStatsTable"></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar"></i> Distribution des catégories</h5>
+            </div>
+            <div class="card-body">
+                <div id="categoryChart"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function loadUserStats() {
+        $.get('/api/users_stats', function(data) {
+            let html = '<table class="table table-sm">';
+            html += '<thead><tr><th>Utilisateur</th><th>Nb dépenses</th><th>Total (Fcfa)</th><th>Moyenne (Fcfa)</th></tr></thead><tbody>';
+            data.forEach(user => {
+                html += `<tr>
+                            <td>${user.username}</td>
+                            <td>${user.expenses_count}</td>
+                            <td>${user.total_amount.toFixed(2)}</td>
+                            <td>${user.avg_amount.toFixed(2)}</td>
+                         </tr>`;
+            });
+            html += '</tbody></table>';
+            $('#userStatsTable').html(html);
+        });
+    }
+    
+    function loadCategoryStats() {
+        $.get('/api/categories_stats', function(data) {
+            let categories = Object.keys(data);
+            let counts = Object.values(data);
+            
+            let trace = {
+                x: categories,
+                y: counts,
+                type: 'bar',
+                marker: {color: '#9b59b6'}
+            };
+            let layout = {
+                title: 'Nombre de dépenses par catégorie',
+                xaxis: {title: 'Catégories'},
+                yaxis: {title: 'Nombre'},
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                paper_bgcolor: 'rgba(0,0,0,0)'
+            };
+            Plotly.newPlot('categoryChart', [trace], layout);
+        });
+    }
+    
+    // Chargement automatique
+    loadUserStats();
+    loadCategoryStats();
+</script>
+{% endblock %}
