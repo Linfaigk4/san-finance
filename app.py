@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 from functools import wraps
+import os
 import json
 import plotly
 import plotly.express as px
@@ -9,8 +10,10 @@ from database import db, User, Expense
 from models import DataAnalyzer
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'votre-cle-secrete-ici'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///expenses.db'
+
+# Configuration pour Render
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'votre-cle-secrete-ici-changez-en-production')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///expenses.db').replace('postgres://', 'postgresql://')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
@@ -38,15 +41,18 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# Route index - CORRIGÉE
+@app.template_global()
+def now():
+    return datetime.now()
+
+# Routes
 @app.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
 
-# Route pour favicon - ÉVITE L'ERREUR 405
 @app.route('/favicon.ico')
 def favicon():
-    return '', 204  # Retourne une réponse vide sans erreur
+    return '', 204
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -73,18 +79,10 @@ def register():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        username = request.form.get('username')  # Utiliser .get() plus sûr
+        username = request.form.get('username')
         password = request.form.get('password')
         
-        print(f"Tentative de connexion: {username}")  # Debug
-        
         user = User.query.filter_by(username=username).first()
-        
-        if user:
-            print(f"Utilisateur trouvé: {user.username}")
-            print(f"Mot de passe hashé: {user.password}")
-            print(f"Vérification password: {check_password_hash(user.password, password)}")
-        
         if user and check_password_hash(user.password, password):
             session['user_id'] = user.id
             session['username'] = user.username
@@ -93,7 +91,6 @@ def login():
             return redirect(url_for('dashboard'))
         else:
             flash('Identifiants invalides', 'danger')
-            print("Échec de connexion")
     
     return render_template('login.html')
 
@@ -109,7 +106,6 @@ def dashboard():
     user = User.query.get(session['user_id'])
     expenses = Expense.query.filter_by(user_id=user.id).order_by(Expense.date.desc()).all()
     
-    # Statistiques
     total_expenses = sum(e.amount for e in expenses)
     avg_expense = total_expenses / len(expenses) if expenses else 0
     categories = {}
@@ -121,7 +117,6 @@ def dashboard():
     
     if expenses and len(expenses) > 0:
         try:
-            # Graphique camembert
             fig = px.pie(
                 values=list(categories.values()), 
                 names=list(categories.keys()), 
@@ -130,7 +125,6 @@ def dashboard():
             )
             graph_json = fig.to_json()
             
-            # Graphique linéaire
             from collections import defaultdict
             daily_totals = defaultdict(float)
             for e in expenses:
@@ -145,7 +139,7 @@ def dashboard():
                     x=dates, 
                     y=amounts, 
                     title="Évolution des dépenses", 
-                    labels={'x': 'Date', 'y': 'Montant (Fcfa)'}
+                    labels={'x': 'Date', 'y': 'Montant (€)'}
                 )
                 fig2.update_traces(line_color='#9b59b6')
                 graph2_json = fig2.to_json()
@@ -168,8 +162,12 @@ def add_expense():
         amount = float(request.form['amount'])
         category = request.form['category']
         description = request.form['description']
-        date_str = request.form.get('date', datetime.now().strftime('%Y-%m-%d'))
-        date = datetime.strptime(date_str, '%Y-%m-%d')
+        date_str = request.form.get('date')
+        
+        if date_str:
+            date = datetime.strptime(date_str, '%Y-%m-%d')
+        else:
+            date = datetime.now()
         
         expense = Expense(
             amount=amount,
@@ -251,7 +249,6 @@ def categories_stats():
         categories[exp.category] = categories.get(exp.category, 0) + 1
     return jsonify(categories)
 
-# Middleware pour gérer les requêtes OPTIONS (CORS)
 @app.before_request
 def handle_options():
     if request.method == 'OPTIONS':
@@ -261,11 +258,10 @@ def handle_options():
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
         return response
 
-# Création des tables
+# Création des tables et données de test
 with app.app_context():
     db.create_all()
     
-    # Créer admin si n'existe pas
     admin = User.query.filter_by(username='admin').first()
     if not admin:
         admin = User(
@@ -276,9 +272,7 @@ with app.app_context():
         )
         db.session.add(admin)
         db.session.commit()
-        print("✅ Compte admin créé: admin/admin123")
     
-    # Créer utilisateur test
     test_user = User.query.filter_by(username='testuser').first()
     if not test_user:
         test_user = User(
@@ -290,7 +284,6 @@ with app.app_context():
         db.session.add(test_user)
         db.session.commit()
         
-        # Ajouter données de test
         categories_list = ['Alimentation', 'Transport', 'Loisirs', 'Santé', 'Shopping', 'Factures']
         for i in range(50):
             expense = Expense(
@@ -302,7 +295,7 @@ with app.app_context():
             )
             db.session.add(expense)
         db.session.commit()
-        print("✅ Données de test créées")
 
 if __name__ == '__main__':
-    app.run(debug=True, host='127.0.0.1', port=5050)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
