@@ -9,6 +9,8 @@ import plotly.express as px
 from database import db, User, Expense
 from models import DataAnalyzer
 from user_analysis import UserDataAnalyzer
+import random  # Ajouter cet import
+from seed_data import CATEGORIES, DESCRIPTIONS, generate_realistic_amount  # Importer les fonctions du seed
 
 app = Flask(__name__)
 
@@ -354,11 +356,23 @@ def my_stats():
     
 
 # Création des tables et données de test
+# ============ CRÉATION AUTOMATIQUE DES DONNÉES DE TEST ============
 with app.app_context():
+    # Créer toutes les tables si elles n'existent pas
     db.create_all()
     
-    admin = User.query.filter_by(username='admin').first()
-    if not admin:
+    # Vérifier si la base est vide ou si admin n'existe pas
+    admin_exists = User.query.filter_by(username='admin').first()
+    
+    if not admin_exists:
+        print("=" * 50)
+        print("📦 INITIALISATION DE LA BASE DE DONNÉES AVEC DONNÉES GÉNÉRIQUES")
+        print("=" * 50)
+        
+        # Importer les catégories et fonctions du seed
+        from seed_data import CATEGORIES, DESCRIPTIONS, generate_realistic_amount
+        
+        # 1. Créer l'utilisateur ADMIN
         admin = User(
             username='admin',
             password=generate_password_hash('admin123'),
@@ -367,29 +381,88 @@ with app.app_context():
         )
         db.session.add(admin)
         db.session.commit()
-    
-    test_user = User.query.filter_by(username='testuser').first()
-    if not test_user:
-        test_user = User(
-            username='testuser',
-            password=generate_password_hash('test123'),
-            email='test@email.com',
-            is_admin=False
-        )
-        db.session.add(test_user)
+        print("✅ Admin créé: admin / admin123")
+        
+        # 2. Créer 3 utilisateurs de test
+        test_users = [
+            {'username': 'jean_dupont', 'email': 'jean@email.com'},
+            {'username': 'marie_martin', 'email': 'marie@email.com'},
+            {'username': 'pierre_durand', 'email': 'pierre@email.com'},
+        ]
+        
+        users_created = []
+        for u in test_users:
+            user = User(
+                username=u['username'],
+                password=generate_password_hash('test123'),
+                email=u['email'],
+                is_admin=False
+            )
+            db.session.add(user)
+            users_created.append(user)
+        
+        db.session.commit()
+        users_created.append(admin)
+        print(f"✅ {len(users_created)} utilisateurs créés")
+        
+        # 3. Générer des dépenses pour chaque utilisateur
+        start_date = datetime.now() - timedelta(days=90)
+        total_expenses = 0
+        
+        for user in users_created:
+            # Nombre de dépenses: entre 50 et 150 par utilisateur
+            num_expenses = random.randint(50, 150)
+            
+            # Distribution des catégories selon l'utilisateur
+            if user.username == 'admin':
+                category_weights = None  # Toutes égales
+            elif user.username == 'jean_dupont':
+                category_weights = [0.25, 0.20, 0.10, 0.05, 0.10, 0.10, 0.05, 0.05, 0.03, 0.02, 0.02, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+            elif user.username == 'marie_martin':
+                category_weights = [0.15, 0.05, 0.20, 0.05, 0.25, 0.05, 0.05, 0.05, 0.05, 0.03, 0.02, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+            else:
+                category_weights = [0.15, 0.05, 0.05, 0.20, 0.05, 0.25, 0.05, 0.05, 0.03, 0.02, 0.02, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+            
+            for i in range(num_expenses):
+                random_days = random.randint(0, 90)
+                expense_date = start_date + timedelta(days=random_days, hours=random.randint(8, 22))
+                
+                # Sélection de la catégorie
+                if category_weights:
+                    category = random.choices(CATEGORIES, weights=category_weights)[0]
+                else:
+                    category = random.choice(CATEGORIES)
+                
+                # Montant réaliste
+                amount = generate_realistic_amount(category) if 'generate_realistic_amount' in dir() else random.uniform(10, 100)
+                
+                # Description
+                desc_list = DESCRIPTIONS.get(category, ['Dépense courante'])
+                description = random.choice(desc_list)
+                
+                expense = Expense(
+                    amount=round(amount, 2),
+                    category=category,
+                    description=f"{description}",
+                    date=expense_date,
+                    user_id=user.id
+                )
+                db.session.add(expense)
+                total_expenses += 1
+        
         db.session.commit()
         
-        categories_list = ['Alimentation', 'Transport', 'Loisirs', 'Santé', 'Shopping', 'Factures']
-        for i in range(50):
-            expense = Expense(
-                amount=10 + (i * 5) % 150,
-                category=categories_list[i % len(categories_list)],
-                description=f'Dépense test {i+1}',
-                date=datetime.now() - timedelta(days=i),
-                user_id=test_user.id
-            )
-            db.session.add(expense)
-        db.session.commit()
+        print(f"\n✅ DONNÉES GÉNÉRÉES AVEC SUCCÈS !")
+        print(f"   - {len(users_created)} utilisateurs")
+        print(f"   - {total_expenses} dépenses créées")
+        print("\n🔑 COMPTES DE TEST:")
+        print("   - admin / admin123")
+        print("   - jean_dupont / test123")
+        print("   - marie_martin / test123")
+        print("   - pierre_durand / test123")
+        print("=" * 50)
+    else:
+        print("✅ Base de données déjà initialisée")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
