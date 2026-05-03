@@ -121,6 +121,11 @@
                                 <i class="fas fa-plus-circle"></i> Ajouter
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('my_analysis') }}">
+                                <i class="fas fa-chart-line"></i> Mes Analyses
+                            </a>
+                        </li>
                         {% if session.is_admin %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('admin') }}">

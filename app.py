@@ -257,6 +257,81 @@ def handle_options():
         response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
         return response
+    
+
+# Ajout des routes d'analyse utilisateur
+from user_analysis import UserDataAnalyzer
+
+@app.route('/my_analysis')
+@login_required
+def my_analysis():
+    """Page d'analyse personnelle pour l'utilisateur connecté"""
+    user = User.query.get(session['user_id'])
+    expenses = Expense.query.filter_by(user_id=user.id).all()
+    
+    stats = UserDataAnalyzer.get_statistics(expenses)
+    
+    return render_template('my_analysis.html', 
+                         user=user, 
+                         stats=stats,
+                         has_data=len(expenses) > 0,
+                         expenses_count=len(expenses))
+
+@app.route('/api/my_analysis/simple_regression')
+@login_required
+def my_simple_regression():
+    user = User.query.get(session['user_id'])
+    expenses = Expense.query.filter_by(user_id=user.id).all()
+    result = UserDataAnalyzer.linear_regression_simple(expenses)
+    return jsonify(result)
+
+@app.route('/api/my_analysis/multiple_regression')
+@login_required
+def my_multiple_regression():
+    user = User.query.get(session['user_id'])
+    expenses = Expense.query.filter_by(user_id=user.id).all()
+    result = UserDataAnalyzer.linear_regression_multiple(expenses)
+    return jsonify(result)
+
+@app.route('/api/my_analysis/pca')
+@login_required
+def my_pca():
+    user = User.query.get(session['user_id'])
+    expenses = Expense.query.filter_by(user_id=user.id).all()
+    result = UserDataAnalyzer.pca_analysis(expenses)
+    return jsonify(result)
+
+@app.route('/api/my_analysis/supervised')
+@login_required
+def my_supervised():
+    user = User.query.get(session['user_id'])
+    expenses = Expense.query.filter_by(user_id=user.id).all()
+    result = UserDataAnalyzer.supervised_classification(expenses)
+    return jsonify(result)
+
+@app.route('/api/my_analysis/unsupervised')
+@login_required
+def my_unsupervised():
+    user = User.query.get(session['user_id'])
+    expenses = Expense.query.filter_by(user_id=user.id).all()
+    result = UserDataAnalyzer.unsupervised_classification(expenses)
+    return jsonify(result)
+
+@app.route('/api/my_analysis/advice')
+@login_required
+def my_advice():
+    user = User.query.get(session['user_id'])
+    expenses = Expense.query.filter_by(user_id=user.id).all()
+    result = UserDataAnalyzer.get_forecast_advice(expenses)
+    return jsonify(result)
+
+@app.route('/api/my_analysis/stats')
+@login_required
+def my_stats():
+    user = User.query.get(session['user_id'])
+    expenses = Expense.query.filter_by(user_id=user.id).all()
+    result = UserDataAnalyzer.get_statistics(expenses)
+    return jsonify(result)
 
 # Création des tables et données de test
 with app.app_context():
