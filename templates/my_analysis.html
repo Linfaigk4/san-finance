@@ -2,213 +2,139 @@
 
 {% block content %}
 <style>
-    .analysis-card {
-        transition: all 0.3s;
-        margin-bottom: 20px;
-    }
-    .analysis-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-    }
-    .result-box {
-        background: #f8f9fa;
-        border-radius: 10px;
-        padding: 15px;
-        margin-top: 15px;
-    }
-    .metric-value {
-        font-size: 24px;
-        font-weight: bold;
-        color: #6a1b9a;
-    }
-    .metric-label {
-        font-size: 12px;
-        color: #666;
-    }
-    .insight-badge {
-        display: inline-block;
-        padding: 5px 10px;
-        border-radius: 20px;
-        font-size: 12px;
-        margin: 3px;
-    }
-    .trend-up { background: #ffebee; color: #c62828; }
-    .trend-down { background: #e8f5e9; color: #2e7d32; }
-    .trend-stable { background: #fff3e0; color: #e65100; }
-    .nav-pills .nav-link.active {
-        background: linear-gradient(135deg, #6a1b9a, #9c27b0);
-    }
-    .nav-pills .nav-link {
-        color: #6a1b9a;
-        border-radius: 25px;
-        margin: 0 5px;
-    }
-    .loading {
-        text-align: center;
-        padding: 40px;
-    }
-    .spinner-border {
-        width: 3rem;
-        height: 3rem;
-    }
+    .analysis-card { margin-bottom: 30px; border-radius: 15px; overflow: hidden; }
+    .result-box { background: #f8f9fa; border-radius: 10px; padding: 15px; margin: 15px 0; }
+    .metric-value { font-size: 28px; font-weight: bold; color: #6a1b9a; }
+    .metric-label { font-size: 12px; color: #666; }
+    .chart-container { height: 400px; margin: 20px 0; }
+    .loading-spinner { text-align: center; padding: 50px; }
+    .badge-trend-up { background: #ffebee; color: #c62828; }
+    .badge-trend-down { background: #e8f5e9; color: #2e7d32; }
+    .badge-trend-stable { background: #fff3e0; color: #e65100; }
 </style>
 
-<div class="row mb-4">
+<div class="row">
     <div class="col-12">
         <div class="card">
             <div class="card-header" style="background: linear-gradient(135deg, #6a1b9a, #9c27b0); color: white;">
                 <h3><i class="fas fa-chart-line"></i> Mes Analyses Personnalisées</h3>
-                <p class="mb-0">Analysez vos dépenses avec des modèles de Machine Learning</p>
+                <p class="mb-0">Analysez vos dépenses avec le Machine Learning</p>
             </div>
             <div class="card-body">
-                {% if not has_data %}
-                <div class="alert alert-warning">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    Vous n'avez pas assez de données pour les analyses avancées.
-                    <a href="{{ url_for('add_expense') }}" class="alert-link">Ajoutez des dépenses</a> pour commencer !
-                </div>
-                {% else %}
-                <div class="row mb-4">
-                    <div class="col-md-3">
-                        <div class="stat-card text-center p-3">
-                            <h5>Total dépenses</h5>
-                            <h3 class="text-primary">{{ "%.2f"|format(stats.total_expenses) }} €</h3>
-                            <small>sur {{ stats.total_count }} dépenses</small>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="stat-card text-center p-3">
-                            <h5>Moyenne journalière</h5>
-                            <h3 class="text-success">{{ "%.2f"|format(stats.daily_average) }} €</h3>
-                            <small>par jour</small>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="stat-card text-center p-3">
-                            <h5>Dépense moyenne</h5>
-                            <h3 class="text-info">{{ "%.2f"|format(stats.average_expense) }} €</h3>
-                            <small>par transaction</small>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="stat-card text-center p-3">
-                            <h5>Catégories</h5>
-                            <h3 class="text-warning">{{ stats.categories_count }}</h3>
-                            <small>différentes</small>
-                        </div>
-                    </div>
+                <!-- Alertes -->
+                <div id="warningAlert" class="alert alert-warning" style="display: none;">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    <span id="warningMessage"></span>
                 </div>
 
-                <!-- Conseils personnalisés -->
-                <div id="adviceContainer" class="mb-4"></div>
+                <!-- Statistiques rapides -->
+                <div id="statsRow" class="row mb-4"></div>
 
-                <!-- Navigation des analyses -->
-                <ul class="nav nav-pills mb-4 justify-content-center" id="analysisTab" role="tablist">
+                <!-- Onglets -->
+                <ul class="nav nav-tabs" id="analysisTabs" role="tablist">
                     <li class="nav-item">
-                        <a class="nav-link active" data-bs-toggle="pill" href="#simple-regression">
-                            <i class="fas fa-chart-line"></i> Régression Simple
+                        <a class="nav-link active" data-bs-toggle="tab" href="#tab_simple">
+                            <i class="fas fa-chart-line"></i> 1. Régression Simple
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="pill" href="#multiple-regression">
-                            <i class="fas fa-chart-line"></i> Régression Multiple
+                        <a class="nav-link" data-bs-toggle="tab" href="#tab_multiple">
+                            <i class="fas fa-chart-line"></i> 2. Régression Multiple
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="pill" href="#pca">
-                            <i class="fas fa-compress-alt"></i> PCA (Réduction)
+                        <a class="nav-link" data-bs-toggle="tab" href="#tab_pca">
+                            <i class="fas fa-compress-alt"></i> 3. PCA (Réduction)
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="pill" href="#supervised">
-                            <i class="fas fa-brain"></i> Classification Supervisée
+                        <a class="nav-link" data-bs-toggle="tab" href="#tab_supervised">
+                            <i class="fas fa-brain"></i> 4. Classification Supervisée
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" data-bs-toggle="pill" href="#unsupervised">
-                            <i class="fas fa-chart-pie"></i> Classification Non-Supervisée
+                        <a class="nav-link" data-bs-toggle="tab" href="#tab_unsupervised">
+                            <i class="fas fa-chart-pie"></i> 5. Classification Non-Supervisée
                         </a>
                     </li>
                 </ul>
 
-                <!-- Contenu des analyses -->
-                <div class="tab-content">
-                    <!-- 1. Régression Linéaire Simple -->
-                    <div class="tab-pane fade show active" id="simple-regression">
-                        <div class="analysis-card card">
+                <div class="tab-content mt-3">
+                    <!-- 1. Régression Simple -->
+                    <div class="tab-pane fade show active" id="tab_simple">
+                        <div class="card analysis-card">
                             <div class="card-body">
-                                <h5><i class="fas fa-chart-line text-primary"></i> Régression Linéaire Simple</h5>
-                                <p>Prédiction de vos dépenses en fonction du temps</p>
-                                <div id="simpleRegressionResult"></div>
-                                <div id="simpleRegressionChart" style="height: 400px;"></div>
-                                <button class="btn btn-primary mt-3" onclick="loadSimpleRegression()">
-                                    <i class="fas fa-sync-alt"></i> Actualiser l'analyse
+                                <h5>Régression Linéaire Simple</h5>
+                                <p>Prédiction de vos dépenses dans le temps</p>
+                                <div id="simpleResult" class="result-box">Chargement...</div>
+                                <div id="simpleChart" class="chart-container"></div>
+                                <button class="btn btn-primary" onclick="loadSimpleRegression()">
+                                    <i class="fas fa-sync-alt"></i> Actualiser
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- 2. Régression Linéaire Multiple -->
-                    <div class="tab-pane fade" id="multiple-regression">
-                        <div class="analysis-card card">
+                    <!-- 2. Régression Multiple -->
+                    <div class="tab-pane fade" id="tab_multiple">
+                        <div class="card analysis-card">
                             <div class="card-body">
-                                <h5><i class="fas fa-chart-line text-success"></i> Régression Linéaire Multiple</h5>
-                                <p>Analyse multi-facteurs de vos dépenses (jour, mois, weekend...)</p>
-                                <div id="multipleRegressionResult"></div>
-                                <div id="multipleRegressionChart" style="height: 400px;"></div>
-                                <button class="btn btn-success mt-3" onclick="loadMultipleRegression()">
-                                    <i class="fas fa-sync-alt"></i> Actualiser l'analyse
+                                <h5>Régression Linéaire Multiple</h5>
+                                <p>Impact des facteurs (jour, mois, weekend)</p>
+                                <div id="multipleResult" class="result-box">Chargement...</div>
+                                <div id="multipleChart" class="chart-container"></div>
+                                <button class="btn btn-success" onclick="loadMultipleRegression()">
+                                    <i class="fas fa-sync-alt"></i> Actualiser
                                 </button>
                             </div>
                         </div>
                     </div>
 
                     <!-- 3. PCA -->
-                    <div class="tab-pane fade" id="pca">
-                        <div class="analysis-card card">
+                    <div class="tab-pane fade" id="tab_pca">
+                        <div class="card analysis-card">
                             <div class="card-body">
-                                <h5><i class="fas fa-compress-alt text-info"></i> Analyse en Composantes Principales (PCA)</h5>
-                                <p>Réduction de dimensionnalité pour visualiser vos patterns de dépenses</p>
-                                <div id="pcaResult"></div>
-                                <div id="pcaChart" style="height: 450px;"></div>
-                                <button class="btn btn-info mt-3" onclick="loadPCA()">
-                                    <i class="fas fa-sync-alt"></i> Actualiser l'analyse
+                                <h5>Analyse en Composantes Principales (PCA)</h5>
+                                <p>Visualisation 2D de vos patterns de dépenses</p>
+                                <div id="pcaResult" class="result-box">Chargement...</div>
+                                <div id="pcaChart" class="chart-container"></div>
+                                <button class="btn btn-info" onclick="loadPCA()">
+                                    <i class="fas fa-sync-alt"></i> Actualiser
                                 </button>
                             </div>
                         </div>
                     </div>
 
                     <!-- 4. Classification Supervisée -->
-                    <div class="tab-pane fade" id="supervised">
-                        <div class="analysis-card card">
+                    <div class="tab-pane fade" id="tab_supervised">
+                        <div class="card analysis-card">
                             <div class="card-body">
-                                <h5><i class="fas fa-brain text-warning"></i> Classification Supervisée</h5>
-                                <p>Prédiction automatique de la catégorie de vos dépenses (Random Forest)</p>
-                                <div id="supervisedResult"></div>
-                                <div id="supervisedChart" style="height: 400px;"></div>
-                                <button class="btn btn-warning mt-3" onclick="loadSupervised()">
-                                    <i class="fas fa-sync-alt"></i> Actualiser l'analyse
+                                <h5>Classification Supervisée (Random Forest)</h5>
+                                <p>Prédiction automatique des catégories de dépenses</p>
+                                <div id="supervisedResult" class="result-box">Chargement...</div>
+                                <div id="supervisedChart" class="chart-container"></div>
+                                <button class="btn btn-warning" onclick="loadSupervised()">
+                                    <i class="fas fa-sync-alt"></i> Actualiser
                                 </button>
                             </div>
                         </div>
                     </div>
 
                     <!-- 5. Classification Non-Supervisée -->
-                    <div class="tab-pane fade" id="unsupervised">
-                        <div class="analysis-card card">
+                    <div class="tab-pane fade" id="tab_unsupervised">
+                        <div class="card analysis-card">
                             <div class="card-body">
-                                <h5><i class="fas fa-chart-pie text-danger"></i> Classification Non-Supervisée</h5>
-                                <p>Regroupement automatique de vos dépenses en clusters similaires (KMeans)</p>
-                                <div id="unsupervisedResult"></div>
-                                <div id="unsupervisedChart" style="height: 400px;"></div>
-                                <button class="btn btn-danger mt-3" onclick="loadUnsupervised()">
-                                    <i class="fas fa-sync-alt"></i> Actualiser l'analyse
+                                <h5>Classification Non-Supervisée (KMeans)</h5>
+                                <p>Regroupement automatique de vos dépenses en clusters</p>
+                                <div id="unsupervisedResult" class="result-box">Chargement...</div>
+                                <div id="unsupervisedChart" class="chart-container"></div>
+                                <button class="btn btn-danger" onclick="loadUnsupervised()">
+                                    <i class="fas fa-sync-alt"></i> Actualiser
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -216,357 +142,326 @@
 
 <script src="https://cdn.plot.ly/plotly-2.27.1.min.js"></script>
 <script>
-    // Chargement des conseils
-    function loadAdvice() {
-        $.get('/api/my_analysis/advice', function(data) {
-            if (data.error) {
-                $('#adviceContainer').hide();
-                return;
-            }
-            let html = '<div class="row">';
-            data.forEach(advice => {
-                let bgColor = advice.type === 'warning' ? '#ffebee' : (advice.type === 'success' ? '#e8f5e9' : '#e3f2fd');
-                let borderColor = advice.type === 'warning' ? '#c62828' : (advice.type === 'success' ? '#2e7d32' : '#1565c0');
-                html += `
-                    <div class="col-md-4 mb-3">
-                        <div class="card" style="border-left: 4px solid ${borderColor}; background: ${bgColor}">
-                            <div class="card-body">
-                                <h6>${advice.title}</h6>
-                                <p class="small">${advice.message}</p>
-                                <small><strong>Action:</strong> ${advice.action}</small>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            $('#adviceContainer').html(html);
-        });
-    }
-
-    // 1. Régression Simple
-    function loadSimpleRegression() {
-        $('#simpleRegressionResult').html('<div class="loading"><div class="spinner-border text-primary"></div><p>Analyse en cours...</p></div>');
+// Fonctions pour chaque analyse
+function loadSimpleRegression() {
+    $('#simpleResult').html('<div class="loading-spinner"><div class="spinner-border text-primary"></div><br>Calcul en cours...</div>');
+    
+    $.get('/api/my_analysis/simple_regression', function(data) {
+        if (data.error) {
+            $('#simpleResult').html(`<div class="alert alert-danger">${data.error}</div>`);
+            $('#simpleChart').empty();
+            return;
+        }
         
-        $.get('/api/my_analysis/simple_regression', function(data) {
-            if (data.error) {
-                $('#simpleRegressionResult').html(`<div class="alert alert-warning">${data.error}</div>`);
-                return;
-            }
-            
-            let trendClass = data.trend.includes('hausse') ? 'trend-up' : (data.trend.includes('baisse') ? 'trend-down' : 'trend-stable');
-            let qualityColor = data.r2_score > 0.5 ? 'success' : (data.r2_score > 0.3 ? 'warning' : 'secondary');
-            
-            let html = `
-                <div class="result-box">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <div class="metric-value">${data.r2_score.toFixed(3)}</div>
-                            <div class="metric-label">R² Score</div>
-                            <span class="badge bg-${qualityColor} mt-1">Qualité: ${data.r2_score > 0.5 ? 'Bon' : (data.r2_score > 0.3 ? 'Moyen' : 'Faible')}</span>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="metric-value">${data.coefficient > 0 ? '+' : ''}${data.coefficient.toFixed(2)}</div>
-                            <div class="metric-label">Tendance (€/jour)</div>
-                            <span class="insight-badge ${trendClass}">${data.trend}</span>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="metric-value">${data.rmse.toFixed(2)} €</div>
-                            <div class="metric-label">Erreur moyenne (RMSE)</div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="metric-value">${data.data_points}</div>
-                            <div class="metric-label">Points de données</div>
-                        </div>
-                    </div>
-                    <hr>
-                    <p><strong>📊 Interprétation:</strong> ${data.interpretation}</p>
-                    <p><strong>🔮 Prévisions des 7 prochains jours:</strong> ${data.future_predictions.map(p => p.toFixed(2) + '€').join(' → ')}</p>
-                </div>
-            `;
-            $('#simpleRegressionResult').html(html);
-            
-            // Graphique
-            let traceActual = {
-                x: Array.from({length: data.actual.length}, (_, i) => i + 1),
-                y: data.actual,
-                name: 'Dépenses réelles',
-                type: 'scatter',
-                mode: 'lines+markers',
-                line: {color: '#2e7d32', width: 2},
-                marker: {color: '#2e7d32', size: 8}
-            };
-            let tracePred = {
-                x: Array.from({length: data.predictions.length}, (_, i) => i + 1),
-                y: data.predictions,
-                name: 'Prédictions',
-                type: 'scatter',
-                mode: 'lines+markers',
-                line: {color: '#6a1b9a', width: 2, dash: 'dash'},
-                marker: {color: '#9c27b0', size: 8}
-            };
-            let layout = {
-                title: 'Évolution des dépenses vs Prédictions',
-                xaxis: {title: 'Dernières dépenses (ordre chronologique)'},
-                yaxis: {title: 'Montant (€)'},
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)'
-            };
-            Plotly.newPlot('simpleRegressionChart', [traceActual, tracePred], layout);
-        });
-    }
-
-    // 2. Régression Multiple
-    function loadMultipleRegression() {
-        $('#multipleRegressionResult').html('<div class="loading"><div class="spinner-border text-success"></div><p>Analyse en cours...</p></div>');
+        if (!data.success) {
+            $('#simpleResult').html(`<div class="alert alert-danger">Erreur: Données insuffisantes</div>`);
+            return;
+        }
         
-        $.get('/api/my_analysis/multiple_regression', function(data) {
-            if (data.error) {
-                $('#multipleRegressionResult').html(`<div class="alert alert-warning">${data.error}</div>`);
-                return;
-            }
-            
-            let qualityColor = data.r2_score > 0.5 ? 'success' : (data.r2_score > 0.3 ? 'warning' : 'secondary');
-            
-            let html = `
-                <div class="result-box">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="metric-value">${data.r2_score.toFixed(3)}</div>
-                            <div class="metric-label">R² Score</div>
-                            <span class="badge bg-${qualityColor}">${data.model_quality}</span>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="metric-value">${data.rmse.toFixed(2)} €</div>
-                            <div class="metric-label">Erreur moyenne (RMSE)</div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="metric-value">${data.top_factor}</div>
-                            <div class="metric-label">Facteur le plus influent</div>
-                        </div>
-                    </div>
-                    <hr>
-                    <p><strong>🔍 Insights par facteur:</strong></p>
-                    <ul>
-                        ${data.insights.map(i => `<li>${i}</li>`).join('')}
-                    </ul>
-                    <p><strong>📈 Qualité du modèle:</strong> ${data.model_quality}</p>
-                </div>
-            `;
-            $('#multipleRegressionResult').html(html);
-            
-            // Graphique feature importance
-            let features = Object.keys(data.coefficients);
-            let values = Object.values(data.coefficients);
-            let trace = {
-                x: features,
-                y: values,
-                type: 'bar',
-                marker: {color: '#66bb6a'}
-            };
-            let layout = {
-                title: 'Impact des différents facteurs sur vos dépenses',
-                xaxis: {title: 'Facteurs', tickangle: -45},
-                yaxis: {title: 'Coefficient (impact en €)'},
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)'
-            };
-            Plotly.newPlot('multipleRegressionChart', [trace], layout);
-        });
-    }
-
-    // 3. PCA
-    function loadPCA() {
-        $('#pcaResult').html('<div class="loading"><div class="spinner-border text-info"></div><p>Réduction dimensionnelle en cours...</p></div>');
+        let trendClass = data.trend == 'hausse' ? 'badge-trend-up' : (data.trend == 'baisse' ? 'badge-trend-down' : 'badge-trend-stable');
+        let trendText = data.trend == 'hausse' ? '📈 En hausse' : (data.trend == 'baisse' ? '📉 En baisse' : '➡️ Stable');
         
-        $.get('/api/my_analysis/pca', function(data) {
-            if (data.error) {
-                $('#pcaResult').html(`<div class="alert alert-warning">${data.error}</div>`);
-                return;
-            }
-            
-            let html = `
-                <div class="result-box">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="metric-value">${(data.explained_variance[0] * 100).toFixed(1)}%</div>
-                            <div class="metric-label">Variance expliquée PC1</div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="metric-value">${(data.explained_variance[1] * 100).toFixed(1)}%</div>
-                            <div class="metric-label">Variance expliquée PC2</div>
-                        </div>
-                    </div>
-                    <hr>
-                    <p><strong>${data.dimension_reduction}</strong></p>
-                    <p><strong>${data.optimal_components}</strong></p>
-                    <p><strong>Variance cumulée:</strong> ${data.cumulative_variance.map(v => `${(v*100).toFixed(1)}%`).join(' → ')}</p>
+        let html = `
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <div class="metric-value">${data.r2_score.toFixed(3)}</div>
+                    <div class="metric-label">R² Score</div>
                 </div>
-            `;
-            $('#pcaResult').html(html);
-            
-            // Graphique PCA
-            let points = data.pca_2d;
-            let trace = {
-                x: points.map(p => p[0]),
-                y: points.map(p => p[1]),
-                mode: 'markers',
-                type: 'scatter',
-                marker: {
-                    size: 12,
-                    color: points.map(p => p[0]),
-                    colorscale: 'Viridis',
-                    showscale: true,
-                    colorbar: {title: 'PC1'}
-                }
-            };
-            let layout = {
-                title: 'Visualisation PCA - Patterns de vos dépenses',
-                xaxis: {title: 'Première composante principale'},
-                yaxis: {title: 'Deuxième composante principale'},
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)'
-            };
-            Plotly.newPlot('pcaChart', [trace], layout);
-        });
-    }
-
-    // 4. Classification Supervisée
-    function loadSupervised() {
-        $('#supervisedResult').html('<div class="loading"><div class="spinner-border text-warning"></div><p>Entraînement du modèle en cours...</p></div>');
+                <div class="col-md-3">
+                    <div class="metric-value">${data.coefficient > 0 ? '+' : ''}${data.coefficient.toFixed(2)}</div>
+                    <div class="metric-label">Tendance (€/jour)</div>
+                    <span class="badge ${trendClass}">${trendText}</span>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric-value">${data.rmse.toFixed(2)} €</div>
+                    <div class="metric-label">Erreur moyenne (RMSE)</div>
+                </div>
+                <div class="col-md-3">
+                    <div class="metric-value">${data.data_points}</div>
+                    <div class="metric-label">Points analysés</div>
+                </div>
+            </div>
+            <hr>
+            <p><strong>🔮 Prévisions 7 jours:</strong> ${data.future_predictions.map(p => p.toFixed(2) + '€').join(' → ')}</p>
+        `;
+        $('#simpleResult').html(html);
         
-        $.get('/api/my_analysis/supervised', function(data) {
-            if (data.error) {
-                $('#supervisedResult').html(`<div class="alert alert-warning">${data.error}</div>`);
-                return;
-            }
-            
-            let performanceColor = data.accuracy > 0.7 ? 'success' : (data.accuracy > 0.5 ? 'warning' : 'secondary');
-            let categoriesList = data.categories.join(', ');
-            
-            let html = `
-                <div class="result-box">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="metric-value">${(data.accuracy * 100).toFixed(1)}%</div>
-                            <div class="metric-label">Précision du modèle</div>
-                            <span class="badge bg-${performanceColor}">${data.model_performance}</span>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="metric-value">${data.n_categories}</div>
-                            <div class="metric-label">Catégories détectées</div>
-                            <small class="text-muted">${categoriesList}</small>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="metric-value">${data.n_samples}</div>
-                            <div class="metric-label">Échantillons d'entraînement</div>
-                        </div>
-                    </div>
-                    <hr>
-                    <p><strong>🎯 Exemple de prédiction:</strong> Une dépense typique serait classée comme <strong>"${data.predicted_category_example}"</strong> avec ${(data.confidence * 100).toFixed(1)}% de confiance.</p>
-                    <p><strong>📊 Facteur le plus important:</strong> ${data.most_important_feature}</p>
-                </div>
-            `;
-            $('#supervisedResult').html(html);
-            
-            // Graphique feature importance
-            let features = Object.keys(data.feature_importance);
-            let values = Object.values(data.feature_importance);
-            let trace = {
-                x: features,
-                y: values,
-                type: 'bar',
-                marker: {color: '#ff9800'}
-            };
-            let layout = {
-                title: 'Importance des facteurs pour la prédiction',
-                xaxis: {title: 'Facteurs', tickangle: -45},
-                yaxis: {title: 'Importance relative'},
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)'
-            };
-            Plotly.newPlot('supervisedChart', [trace], layout);
-        });
-    }
-
-    // 5. Classification Non-Supervisée
-    function loadUnsupervised() {
-        $('#unsupervisedResult').html('<div class="loading"><div class="spinner-border text-danger"></div><p>Clustering en cours...</p></div>');
+        // Graphique
+        let traceActual = {
+            x: data.x_values,
+            y: data.actual,
+            name: 'Dépenses réelles',
+            type: 'scatter',
+            mode: 'lines+markers',
+            line: {color: '#2e7d32', width: 2},
+            marker: {color: '#2e7d32', size: 8}
+        };
         
-        $.get('/api/my_analysis/unsupervised', function(data) {
-            if (data.error) {
-                $('#unsupervisedResult').html(`<div class="alert alert-warning">${data.error}</div>`);
-                return;
-            }
-            
-            let qualityColor = data.silhouette_score > 0.5 ? 'success' : (data.silhouette_score > 0.3 ? 'warning' : 'secondary');
-            
-            let html = `
-                <div class="result-box">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="metric-value">${data.n_clusters}</div>
-                            <div class="metric-label">Clusters identifiés</div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="metric-value">${data.silhouette_score.toFixed(3)}</div>
-                            <div class="metric-label">Score de silhouette</div>
-                            <span class="badge bg-${qualityColor}">${data.quality}</span>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="metric-value">${data.optimal_k}</div>
-                            <div class="metric-label">Nombre optimal de clusters</div>
-                        </div>
-                    </div>
-                    <hr>
-                    <p><strong>📋 Profils des clusters:</strong></p>
-                    <div class="row">
-                        ${data.cluster_profiles.map(p => `
-                            <div class="col-md-4 mb-2">
-                                <div class="card p-2 text-center">
-                                    <strong>Cluster ${p.cluster_id + 1}</strong>
-                                    <small>${p.size} dépenses (${p.percentage.toFixed(1)}%)</small>
-                                    <small>Moyenne: ${p.avg_amount.toFixed(2)}€</small>
-                                    <small>Catégorie principale: ${p.top_category}</small>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-            $('#unsupervisedResult').html(html);
-            
-            // Graphique clusters (simulé pour visualisation)
-            let clusters = data.cluster_profiles;
-            let trace = {
-                x: clusters.map(c => `Cluster ${c.cluster_id + 1}`),
-                y: clusters.map(c => c.avg_amount),
-                type: 'bar',
-                marker: {
-                    color: clusters.map((_, i) => ['#6a1b9a', '#2e7d32', '#9c27b0', '#66bb6a'][i % 4]),
-                    text: clusters.map(c => `${c.size} dépenses`),
-                    textposition: 'auto'
-                }
-            };
-            let layout = {
-                title: 'Comparaison des clusters',
-                xaxis: {title: 'Clusters'},
-                yaxis: {title: 'Dépense moyenne (€)'},
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)'
-            };
-            Plotly.newPlot('unsupervisedChart', [trace], layout);
-        });
-    }
-
-    // Chargement automatique au démarrage
-    $(document).ready(function() {
-        loadAdvice();
-        loadSimpleRegression();
-        loadMultipleRegression();
-        loadPCA();
-        loadSupervised();
-        loadUnsupervised();
+        let tracePred = {
+            x: data.x_values.slice(-10),
+            y: data.predictions,
+            name: 'Prédictions',
+            type: 'scatter',
+            mode: 'lines+markers',
+            line: {color: '#6a1b9a', width: 2, dash: 'dash'},
+            marker: {color: '#9c27b0', size: 8}
+        };
+        
+        let layout = {
+            title: 'Évolution de vos dépenses',
+            xaxis: {title: 'Ordre chronologique'},
+            yaxis: {title: 'Montant (€)'},
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)'
+        };
+        Plotly.newPlot('simpleChart', [traceActual, tracePred], layout);
+    }).fail(function() {
+        $('#simpleResult').html('<div class="alert alert-danger">Erreur de connexion au serveur</div>');
     });
+}
+
+function loadMultipleRegression() {
+    $('#multipleResult').html('<div class="loading-spinner"><div class="spinner-border text-success"></div><br>Analyse en cours...</div>');
+    
+    $.get('/api/my_analysis/multiple_regression', function(data) {
+        if (data.error) {
+            $('#multipleResult').html(`<div class="alert alert-danger">${data.error}</div>`);
+            $('#multipleChart').empty();
+            return;
+        }
+        
+        if (!data.success) {
+            $('#multipleResult').html(`<div class="alert alert-danger">Erreur d'analyse</div>`);
+            return;
+        }
+        
+        let html = `
+            <div class="row text-center">
+                <div class="col-md-6">
+                    <div class="metric-value">${data.r2_score.toFixed(3)}</div>
+                    <div class="metric-label">R² Score</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="metric-value">${data.rmse.toFixed(2)} €</div>
+                    <div class="metric-label">Erreur moyenne (RMSE)</div>
+                </div>
+            </div>
+            <hr>
+            <p><strong>📊 Coefficients:</strong></p>
+            <ul>
+                ${Object.entries(data.coefficients).map(([k, v]) => `<li><strong>${k}:</strong> ${v > 0 ? '+' : ''}${v.toFixed(2)} €</li>`).join('')}
+            </ul>
+        `;
+        $('#multipleResult').html(html);
+        
+        // Graphique des coefficients
+        let trace = {
+            x: data.feature_names,
+            y: data.feature_values,
+            type: 'bar',
+            marker: {color: '#66bb6a'}
+        };
+        let layout = {
+            title: 'Impact des facteurs sur vos dépenses',
+            xaxis: {title: 'Facteurs', tickangle: -45},
+            yaxis: {title: 'Impact (€)'},
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)'
+        };
+        Plotly.newPlot('multipleChart', [trace], layout);
+    }).fail(function() {
+        $('#multipleResult').html('<div class="alert alert-danger">Erreur de connexion</div>');
+    });
+}
+
+function loadPCA() {
+    $('#pcaResult').html('<div class="loading-spinner"><div class="spinner-border text-info"></div><br>Réduction dimensionnelle...</div>');
+    
+    $.get('/api/my_analysis/pca', function(data) {
+        if (data.error) {
+            $('#pcaResult').html(`<div class="alert alert-danger">${data.error}</div>`);
+            $('#pcaChart').empty();
+            return;
+        }
+        
+        if (!data.success) {
+            $('#pcaResult').html(`<div class="alert alert-danger">Erreur PCA</div>`);
+            return;
+        }
+        
+        let html = `
+            <div class="row text-center">
+                <div class="col-md-6">
+                    <div class="metric-value">${(data.explained_variance_ratio[0] * 100).toFixed(1)}%</div>
+                    <div class="metric-label">Variance PC1</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="metric-value">${(data.explained_variance_ratio[1] * 100).toFixed(1)}%</div>
+                    <div class="metric-label">Variance PC2</div>
+                </div>
+            </div>
+            <hr>
+            <p><strong>✅ Réduction:</strong> 5 dimensions → 2 dimensions</p>
+        `;
+        $('#pcaResult').html(html);
+        
+        // Graphique PCA
+        let points = data.points;
+        let trace = {
+            x: points.map(p => p[0]),
+            y: points.map(p => p[1]),
+            mode: 'markers',
+            type: 'scatter',
+            marker: {
+                size: 12,
+                color: points.map(p => p[0]),
+                colorscale: 'Viridis',
+                showscale: true,
+                colorbar: {title: 'Valeur'}
+            },
+            text: data.categories,
+            hoverinfo: 'text+x+y'
+        };
+        let layout = {
+            title: 'Projection PCA de vos dépenses',
+            xaxis: {title: 'Première composante'},
+            yaxis: {title: 'Deuxième composante'},
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)'
+        };
+        Plotly.newPlot('pcaChart', [trace], layout);
+    }).fail(function() {
+        $('#pcaResult').html('<div class="alert alert-danger">Erreur de connexion</div>');
+    });
+}
+
+function loadSupervised() {
+    $('#supervisedResult').html('<div class="loading-spinner"><div class="spinner-border text-warning"></div><br>Entraînement du modèle...</div>');
+    
+    $.get('/api/my_analysis/supervised', function(data) {
+        if (data.error) {
+            $('#supervisedResult').html(`<div class="alert alert-danger">${data.error}</div>`);
+            $('#supervisedChart').empty();
+            return;
+        }
+        
+        if (!data.success) {
+            $('#supervisedResult').html(`<div class="alert alert-danger">Erreur classification</div>`);
+            return;
+        }
+        
+        let accuracyColor = data.accuracy > 0.7 ? 'success' : (data.accuracy > 0.5 ? 'warning' : 'danger');
+        
+        let html = `
+            <div class="row text-center">
+                <div class="col-md-12">
+                    <div class="metric-value">${(data.accuracy * 100).toFixed(1)}%</div>
+                    <div class="metric-label">Précision du modèle</div>
+                    <span class="badge bg-${accuracyColor} mt-2">
+                        ${data.accuracy > 0.7 ? '✅ Excellent' : (data.accuracy > 0.5 ? '⚠️ Bon' : '❌ À améliorer')}
+                    </span>
+                </div>
+            </div>
+        `;
+        $('#supervisedResult').html(html);
+        
+        // Graphique importance des features
+        let trace = {
+            x: data.feature_names,
+            y: data.importance_values,
+            type: 'bar',
+            marker: {color: '#ff9800'}
+        };
+        let layout = {
+            title: 'Importance des facteurs pour la prédiction',
+            xaxis: {title: 'Facteurs', tickangle: -45},
+            yaxis: {title: 'Importance relative'},
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)'
+        };
+        Plotly.newPlot('supervisedChart', [trace], layout);
+    }).fail(function() {
+        $('#supervisedResult').html('<div class="alert alert-danger">Erreur de connexion</div>');
+    });
+}
+
+function loadUnsupervised() {
+    $('#unsupervisedResult').html('<div class="loading-spinner"><div class="spinner-border text-danger"></div><br>Clustering en cours...</div>');
+    
+    $.get('/api/my_analysis/unsupervised', function(data) {
+        if (data.error) {
+            $('#unsupervisedResult').html(`<div class="alert alert-danger">${data.error}</div>`);
+            $('#unsupervisedChart').empty();
+            return;
+        }
+        
+        if (!data.success) {
+            $('#unsupervisedResult').html(`<div class="alert alert-danger">Erreur clustering</div>`);
+            return;
+        }
+        
+        let qualityColor = data.silhouette_score > 0.5 ? 'success' : (data.silhouette_score > 0.3 ? 'warning' : 'secondary');
+        
+        let html = `
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <div class="metric-value">${data.n_clusters}</div>
+                    <div class="metric-label">Clusters</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="metric-value">${data.silhouette_score.toFixed(3)}</div>
+                    <div class="metric-label">Silhouette</div>
+                    <span class="badge bg-${qualityColor}">${data.silhouette_score > 0.5 ? 'Bon' : (data.silhouette_score > 0.3 ? 'Moyen' : 'Faible')}</span>
+                </div>
+                <div class="col-md-4">
+                    <div class="metric-value">${data.cluster_stats.length}</div>
+                    <div class="metric-label">Groupes identifiés</div>
+                </div>
+            </div>
+            <hr>
+            <p><strong>📊 Profils des clusters:</strong></p>
+            <div class="row">
+                ${data.cluster_stats.map(c => `
+                    <div class="col-md-4 mb-2">
+                        <div class="card p-2 text-center small">
+                            <strong>Cluster ${c.id + 1}</strong><br>
+                            ${c.size} dépenses (${c.percentage.toFixed(1)}%)<br>
+                            Moyenne: ${c.avg_amount.toFixed(2)}€
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        $('#unsupervisedResult').html(html);
+        
+        // Graphique clusters
+        let trace = {
+            x: data.cluster_stats.map(c => `Cluster ${c.id + 1}`),
+            y: data.cluster_stats.map(c => c.avg_amount),
+            type: 'bar',
+            marker: {color: ['#6a1b9a', '#2e7d32', '#9c27b0']}
+        };
+        let layout = {
+            title: 'Montant moyen par cluster',
+            xaxis: {title: 'Clusters'},
+            yaxis: {title: 'Dépense moyenne (€)'},
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)'
+        };
+        Plotly.newPlot('unsupervisedChart', [trace], layout);
+    }).fail(function() {
+        $('#unsupervisedResult').html('<div class="alert alert-danger">Erreur de connexion</div>');
+    });
+}
+
+// Chargement automatique
+$(document).ready(function() {
+    console.log("Page chargée, lancement des analyses...");
+    loadSimpleRegression();
+    loadMultipleRegression();
+    loadPCA();
+    loadSupervised();
+    loadUnsupervised();
+});
 </script>
 {% endblock %}

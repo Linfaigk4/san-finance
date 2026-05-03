@@ -333,6 +333,86 @@ def my_stats():
     result = UserDataAnalyzer.get_statistics(expenses)
     return jsonify(result)
 
+
+# Routes API pour analyses utilisateur (VERSION CORRIGÉE)
+@app.route('/api/my_analysis/simple_regression')
+@login_required
+def my_simple_regression():
+    try:
+        user = User.query.get(session['user_id'])
+        expenses = Expense.query.filter_by(user_id=user.id).all()
+        result = UserDataAnalyzer.linear_regression_simple(expenses)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@app.route('/api/my_analysis/multiple_regression')
+@login_required
+def my_multiple_regression():
+    try:
+        user = User.query.get(session['user_id'])
+        expenses = Expense.query.filter_by(user_id=user.id).all()
+        result = UserDataAnalyzer.linear_regression_multiple(expenses)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@app.route('/api/my_analysis/pca')
+@login_required
+def my_pca():
+    try:
+        user = User.query.get(session['user_id'])
+        expenses = Expense.query.filter_by(user_id=user.id).all()
+        result = UserDataAnalyzer.pca_analysis(expenses)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@app.route('/api/my_analysis/supervised')
+@login_required
+def my_supervised():
+    try:
+        user = User.query.get(session['user_id'])
+        expenses = Expense.query.filter_by(user_id=user.id).all()
+        result = UserDataAnalyzer.supervised_classification(expenses)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@app.route('/api/my_analysis/unsupervised')
+@login_required
+def my_unsupervised():
+    try:
+        user = User.query.get(session['user_id'])
+        expenses = Expense.query.filter_by(user_id=user.id).all()
+        result = UserDataAnalyzer.unsupervised_classification(expenses)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@app.route('/api/my_analysis/advice')
+@login_required
+def my_advice():
+    try:
+        user = User.query.get(session['user_id'])
+        expenses = Expense.query.filter_by(user_id=user.id).all()
+        result = UserDataAnalyzer.get_forecast_advice(expenses)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e), 'advice': []})
+
+@app.route('/api/my_analysis/stats')
+@login_required
+def my_stats():
+    try:
+        user = User.query.get(session['user_id'])
+        expenses = Expense.query.filter_by(user_id=user.id).all()
+        result = UserDataAnalyzer.get_statistics(expenses)
+        return jsonify(result if result else {'error': 'Pas de données'})
+    except Exception as e:
+        return jsonify({'error': str(e)})
+    
+    
 # Création des tables et données de test
 with app.app_context():
     db.create_all()
