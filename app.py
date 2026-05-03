@@ -8,6 +8,7 @@ import plotly
 import plotly.express as px
 from database import db, User, Expense
 from models import DataAnalyzer
+from user_analysis import UserDataAnalyzer
 
 app = Flask(__name__)
 

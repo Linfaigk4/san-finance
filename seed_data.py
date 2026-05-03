@@ -1,3 +1,4 @@
+# seed_data.py - Version améliorée avec données génériques robustes
 from app import app, db
 from database import User, Expense
 from werkzeug.security import generate_password_hash
@@ -5,139 +6,196 @@ from datetime import datetime, timedelta
 import random
 import numpy as np
 
+# Catégories de dépenses (10+ catégories différentes)
+CATEGORIES = [
+    'Alimentation', 'Transport', 'Loisirs', 'Santé', 'Shopping',
+    'Factures', 'Éducation', 'Restaurant', 'Habillement', 'Sport',
+    'Divertissement', 'Café', 'Abonnements', 'Animaux', 'Cadeaux',
+    'Voyages', 'Technologie', 'Maison', 'Assurance', 'Impôts'
+]
+
+# Descriptions variées
+DESCRIPTIONS = {
+    'Alimentation': ['Courses supermarché', 'Fruits et légumes', 'Boucherie', 'Boulangerie', 'Épicerie fine'],
+    'Transport': ['Essence', 'Taxi', 'Transports en commun', 'Réparation voiture', 'Parking'],
+    'Loisirs': ['Cinéma', 'Théâtre', 'Concert', 'Parc d\'attractions', 'Jeux vidéo'],
+    'Santé': ['Consultation médecin', 'Dentiste', 'Médicaments', 'Optique', 'Pharmacie'],
+    'Shopping': ['Vêtements', 'Chaussures', 'Accessoires', 'Téléphone', 'Tablette'],
+    'Factures': ['Électricité', 'Eau', 'Gaz', 'Internet', 'Téléphone fixe'],
+    'Éducation': ['Livres', 'Cours en ligne', 'Fournitures scolaires', 'Formation', 'Inscription'],
+    'Restaurant': ['Dîner au restaurant', 'Fast-food', 'Food truck', 'Livraison repas', 'Brunch'],
+    'Habillement': ['Jean', 'Chemise', 'Robe', 'Veste', 'Accessoires mode'],
+    'Sport': ['Salle de sport', 'Équipement sportif', 'Abonnement yoga', 'Course à pied', 'Natation'],
+    'Divertissement': ['Netflix', 'Disney+', 'Amazon Prime', 'Spotify', 'Jeux en ligne'],
+    'Café': ['Café du matin', 'Pause café', 'Thé', 'Viennoiserie', 'Sandwich'],
+    'Abonnements': ['Abonnement salle', 'Magazine', 'Application', 'Streaming', 'Cloud'],
+    'Animaux': ['Nourriture chien/chat', 'Vétérinaire', 'Accessoires', 'Toilettage', 'Pension'],
+    'Cadeaux': ['Anniversaire', 'Noël', 'Fête', 'Mariage', 'Naissance'],
+    'Voyages': ['Billet d\'avion', 'Hôtel', 'Location voiture', 'Visites', 'Restaurant voyage'],
+    'Technologie': ['Smartphone', 'Ordinateur', 'Casque audio', 'Enceinte', 'Accessoires tech'],
+    'Maison': ['Meubles', 'Décoration', 'Jardinage', 'Bricolage', 'Électroménager'],
+    'Assurance': ['Assurance voiture', 'Assurance habitation', 'Assurance santé', 'Assurance vie', 'Assurance scolaire'],
+    'Impôts': ['Taxe foncière', 'Taxe d\'habitation', 'Impôt sur le revenu', 'Taxe poubelle', 'CFE']
+}
+
+def generate_realistic_amount(category):
+    """Génère un montant réaliste selon la catégorie"""
+    amounts = {
+        'Alimentation': (20, 150),
+        'Transport': (5, 80),
+        'Loisirs': (10, 100),
+        'Santé': (15, 200),
+        'Shopping': (25, 300),
+        'Factures': (40, 250),
+        'Éducation': (10, 150),
+        'Restaurant': (15, 120),
+        'Habillement': (20, 200),
+        'Sport': (10, 100),
+        'Divertissement': (5, 60),
+        'Café': (2, 15),
+        'Abonnements': (5, 50),
+        'Animaux': (10, 80),
+        'Cadeaux': (20, 150),
+        'Voyages': (100, 800),
+        'Technologie': (50, 1000),
+        'Maison': (30, 300),
+        'Assurance': (50, 200),
+        'Impôts': (100, 1000)
+    }
+    min_amt, max_amt = amounts.get(category, (10, 100))
+    return round(random.uniform(min_amt, max_amt), 2)
+
 def seed_database():
-    """Génère des données de test réalistes pour la démo"""
+    """Génère des données de test complètes pour la démo"""
     
     with app.app_context():
         # Nettoyer les données existantes
         db.drop_all()
         db.create_all()
+        print("✅ Base de données réinitialisée")
         
-        # Catégories de dépenses
-        categories = ['Alimentation', 'Transport', 'Loisirs', 'Santé', 'Shopping', 'Factures', 'Éducation', 'Restaurant']
+        # 1. Créer l'utilisateur ADMIN avec données génériques
+        admin = User(
+            username='admin',
+            password=generate_password_hash('admin123'),
+            email='admin@finance.com',
+            is_admin=True
+        )
+        db.session.add(admin)
+        db.session.commit()
+        print("✅ Admin créé: admin/admin123")
         
-        # Utilisateurs de test
-        users_data = [
-            {'username': 'admin', 'password': 'admin123', 'email': 'admin@finance.com', 'is_admin': True},
-            {'username': 'jean_dupont', 'password': 'test123', 'email': 'jean@email.com', 'is_admin': False},
-            {'username': 'marie_martin', 'password': 'test123', 'email': 'marie@email.com', 'is_admin': False},
-            {'username': 'pierre_durand', 'password': 'test123', 'email': 'pierre@email.com', 'is_admin': False},
-            {'username': 'sophie_bernard', 'password': 'test123', 'email': 'sophie@email.com', 'is_admin': False},
-            {'username': 'lucas_leroy', 'password': 'test123', 'email': 'lucas@email.com', 'is_admin': False},
+        # 2. Créer 3 utilisateurs de test
+        test_users = [
+            {'username': 'jean_dupont', 'email': 'jean@email.com'},
+            {'username': 'marie_martin', 'email': 'marie@email.com'},
+            {'username': 'pierre_durand', 'email': 'pierre@email.com'},
         ]
         
-        users = []
-        for user_data in users_data:
+        users_created = []
+        for u in test_users:
             user = User(
-                username=user_data['username'],
-                password=generate_password_hash(user_data['password']),
-                email=user_data['email'],
-                is_admin=user_data['is_admin']
+                username=u['username'],
+                password=generate_password_hash('test123'),
+                email=u['email'],
+                is_admin=False
             )
             db.session.add(user)
-            users.append(user)
+            users_created.append(user)
         
         db.session.commit()
+        users_created.append(admin)
+        print(f"✅ {len(users_created)} utilisateurs créés")
         
-        # Générer des dépenses pour chaque utilisateur (3 mois de données)
+        # 3. Générer des dépenses pour chaque utilisateur (3 mois de données)
         start_date = datetime.now() - timedelta(days=90)
         
-        descriptions = [
-            "Courses supermarché", "Restaurant", "Cinéma", "Essence voiture", 
-            "Shopping en ligne", "Facture électricité", "Consultation médecin",
-            "Abonnement Netflix", "Achat livres", "Café", "Taxi", "Sport",
-            "Téléphone mobile", "Internet", "Vêtements", "Chaussures",
-            "Médicaments", "Frais bancaires", "Cadeau", "Loisirs"
-        ]
+        total_expenses = 0
         
-        for user in users:
-            # Chaque utilisateur a entre 50 et 150 dépenses
-            num_expenses = random.randint(50, 150)
+        for user in users_created:
+            # Nombre de dépenses: entre 50 et 200 par utilisateur
+            num_expenses = random.randint(50, 200)
             
             for i in range(num_expenses):
                 # Date aléatoire sur les 90 derniers jours
                 random_days = random.randint(0, 90)
-                expense_date = start_date + timedelta(days=random_days, hours=random.randint(0, 23))
+                expense_date = start_date + timedelta(days=random_days, hours=random.randint(8, 22))
                 
-                # Catégorie avec probabilités différentes selon l'utilisateur
-                if user.username == 'jean_dupont':
-                    # Jean dépense beaucoup en alimentation et transport
-                    weights = [0.35, 0.25, 0.1, 0.05, 0.1, 0.1, 0.03, 0.02]
+                # Choisir une catégorie (distribution variée)
+                if user.username == 'admin':
+                    # L'admin a une distribution équilibrée
+                    category = random.choice(CATEGORIES)
+                elif user.username == 'jean_dupont':
+                    # Jean: alimentation + transport
+                    weights = [0.25, 0.20, 0.10, 0.05, 0.10, 0.10, 0.05, 0.05, 0.03, 0.02, 0.02, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+                    category = random.choices(CATEGORIES, weights=weights)[0]
                 elif user.username == 'marie_martin':
-                    # Marie dépense en shopping et loisirs
-                    weights = [0.2, 0.1, 0.2, 0.05, 0.25, 0.1, 0.05, 0.05]
-                elif user.username == 'pierre_durand':
-                    # Pierre dépense en factures et santé
-                    weights = [0.15, 0.05, 0.1, 0.25, 0.05, 0.3, 0.05, 0.05]
-                elif user.username == 'sophie_bernard':
-                    # Sophie dépense en éducation et restaurant
-                    weights = [0.2, 0.2, 0.1, 0.05, 0.1, 0.1, 0.2, 0.05]
-                elif user.username == 'lucas_leroy':
-                    # Lucas dépense en loisirs et shopping
-                    weights = [0.15, 0.15, 0.3, 0.02, 0.2, 0.08, 0.05, 0.05]
+                    # Marie: shopping + loisirs
+                    weights = [0.15, 0.05, 0.20, 0.05, 0.25, 0.05, 0.05, 0.05, 0.05, 0.03, 0.02, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+                    category = random.choices(CATEGORIES, weights=weights)[0]
                 else:
-                    weights = [0.2, 0.15, 0.15, 0.1, 0.15, 0.1, 0.05, 0.1]
+                    # Pierre: factures + santé
+                    weights = [0.15, 0.05, 0.05, 0.20, 0.05, 0.25, 0.05, 0.05, 0.03, 0.02, 0.02, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+                    category = random.choices(CATEGORIES, weights=weights)[0]
                 
-                category = random.choices(categories, weights=weights)[0]
+                # Montant réaliste selon catégorie
+                amount = generate_realistic_amount(category)
                 
-                # Montant selon la catégorie
-                if category == 'Alimentation':
-                    amount = random.uniform(15, 120)
-                elif category == 'Transport':
-                    amount = random.uniform(5, 60)
-                elif category == 'Loisirs':
-                    amount = random.uniform(10, 80)
-                elif category == 'Santé':
-                    amount = random.uniform(20, 150)
-                elif category == 'Shopping':
-                    amount = random.uniform(25, 200)
-                elif category == 'Factures':
-                    amount = random.uniform(30, 250)
-                elif category == 'Éducation':
-                    amount = random.uniform(15, 100)
-                else:  # Restaurant
-                    amount = random.uniform(20, 90)
+                # Ajouter une tendance temporelle (légère augmentation)
+                if random_days > 60:
+                    amount = amount * 1.15
+                elif random_days > 30:
+                    amount = amount * 1.05
                 
-                # Tendance temporelle: les dépenses augmentent légèrement avec le temps
-                amount = amount * (1 + (random_days / 90) * 0.2)
+                # Description pertinente
+                desc_list = DESCRIPTIONS.get(category, ['Dépense courante', 'Achat quotidien', 'Dépense diverses'])
+                description = random.choice(desc_list)
                 
                 expense = Expense(
                     amount=round(amount, 2),
                     category=category,
-                    description=random.choice(descriptions),
+                    description=f"{description} - {expense_date.strftime('%d/%m')}",
                     date=expense_date,
                     user_id=user.id
                 )
                 db.session.add(expense)
+                total_expenses += 1
                 
-                # Commit toutes les 50 dépenses pour éviter les timeout
-                if i % 50 == 0:
+                # Commit par lots
+                if total_expenses % 100 == 0:
                     db.session.commit()
+                    print(f"   💰 {total_expenses} dépenses créées...")
         
         db.session.commit()
-        print(f"✅ Base de données initialisée avec succès!")
-        print(f"   - {len(users)} utilisateurs créés")
-        print(f"   - {Expense.query.count()} dépenses générées")
         
-        # Afficher quelques statistiques
-        from models import DataAnalyzer
-        df = DataAnalyzer.get_expense_dataframe()
-        print(f"\n📊 Statistiques des données générées:")
-        print(f"   - Montant moyen: {df['amount'].mean():.2f}Fcfa")
-        print(f"   - Montant total: {df['amount'].sum():.2f}Fcfa")
-        print(f"   - Dépense max: {df['amount'].max():.2f}Fcfa")
-        print(f"   - Dépense min: {df['amount'].min():.2f}Fcfa")
-
-def reset_database():
-    """Réinitialise complètement la base de données"""
-    with app.app_context():
-        db.drop_all()
-        db.create_all()
-        print("✅ Base de données réinitialisée")
+        print("\n" + "="*50)
+        print("📊 STATISTIQUES DES DONNÉES GÉNÉRÉES")
+        print("="*50)
+        
+        # Vérification des comptes
+        admin_check = User.query.filter_by(username='admin').first()
+        print(f"\n👤 ADMIN: {admin_check.username} (mdp: admin123)")
+        print(f"   - {len(admin_check.expenses)} dépenses")
+        
+        # Stats par utilisateur
+        for user in users_created:
+            expenses = Expense.query.filter_by(user_id=user.id).all()
+            categories_used = set(e.category for e in expenses)
+            total = sum(e.amount for e in expenses)
+            print(f"\n👤 {user.username} (test123):")
+            print(f"   - {len(expenses)} dépenses")
+            print(f"   - Total: {total:.2f}€")
+            print(f"   - Moyenne: {total/len(expenses):.2f}€")
+            print(f"   - Catégories: {len(categories_used)}/{len(CATEGORIES)}")
+        
+        print("\n" + "="*50)
+        print("✅ INITIALISATION TERMINÉE !")
+        print("="*50)
+        print("\n🔑 COMPTES DE TEST:")
+        print("   - admin / admin123 (toutes les catégories)")
+        print("   - jean_dupont / test123 (alimentation + transport)")
+        print("   - marie_martin / test123 (shopping + loisirs)")
+        print("   - pierre_durand / test123 (factures + santé)")
 
 if __name__ == '__main__':
-    import sys
-    if len(sys.argv) > 1 and sys.argv[1] == 'reset':
-        reset_database()
-    else:
-        seed_database()
+    seed_database()
