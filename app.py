@@ -258,83 +258,22 @@ def handle_options():
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
         return response
     
-
-# Ajout des routes d'analyse utilisateur
-from user_analysis import UserDataAnalyzer
+# ============ ROUTES D'ANALYSE POUR UTILISATEUR ============
 
 @app.route('/my_analysis')
 @login_required
 def my_analysis():
-    """Page d'analyse personnelle pour l'utilisateur connecté"""
-    user = User.query.get(session['user_id'])
-    expenses = Expense.query.filter_by(user_id=user.id).all()
-    
-    stats = UserDataAnalyzer.get_statistics(expenses)
-    
-    return render_template('my_analysis.html', 
-                         user=user, 
-                         stats=stats,
-                         has_data=len(expenses) > 0,
-                         expenses_count=len(expenses))
+    try:
+        user = User.query.get(session['user_id'])
+        expenses = Expense.query.filter_by(user_id=user.id).all()
+        return render_template('my_analysis.html', 
+                             user=user, 
+                             has_data=len(expenses) > 0,
+                             expenses_count=len(expenses))
+    except Exception as e:
+        flash('Erreur lors du chargement des analyses', 'danger')
+        return redirect(url_for('dashboard'))
 
-@app.route('/api/my_analysis/simple_regression')
-@login_required
-def my_simple_regression():
-    user = User.query.get(session['user_id'])
-    expenses = Expense.query.filter_by(user_id=user.id).all()
-    result = UserDataAnalyzer.linear_regression_simple(expenses)
-    return jsonify(result)
-
-@app.route('/api/my_analysis/multiple_regression')
-@login_required
-def my_multiple_regression():
-    user = User.query.get(session['user_id'])
-    expenses = Expense.query.filter_by(user_id=user.id).all()
-    result = UserDataAnalyzer.linear_regression_multiple(expenses)
-    return jsonify(result)
-
-@app.route('/api/my_analysis/pca')
-@login_required
-def my_pca():
-    user = User.query.get(session['user_id'])
-    expenses = Expense.query.filter_by(user_id=user.id).all()
-    result = UserDataAnalyzer.pca_analysis(expenses)
-    return jsonify(result)
-
-@app.route('/api/my_analysis/supervised')
-@login_required
-def my_supervised():
-    user = User.query.get(session['user_id'])
-    expenses = Expense.query.filter_by(user_id=user.id).all()
-    result = UserDataAnalyzer.supervised_classification(expenses)
-    return jsonify(result)
-
-@app.route('/api/my_analysis/unsupervised')
-@login_required
-def my_unsupervised():
-    user = User.query.get(session['user_id'])
-    expenses = Expense.query.filter_by(user_id=user.id).all()
-    result = UserDataAnalyzer.unsupervised_classification(expenses)
-    return jsonify(result)
-
-@app.route('/api/my_analysis/advice')
-@login_required
-def my_advice():
-    user = User.query.get(session['user_id'])
-    expenses = Expense.query.filter_by(user_id=user.id).all()
-    result = UserDataAnalyzer.get_forecast_advice(expenses)
-    return jsonify(result)
-
-@app.route('/api/my_analysis/stats')
-@login_required
-def my_stats():
-    user = User.query.get(session['user_id'])
-    expenses = Expense.query.filter_by(user_id=user.id).all()
-    result = UserDataAnalyzer.get_statistics(expenses)
-    return jsonify(result)
-
-
-# Routes API pour analyses utilisateur (VERSION CORRIGÉE)
 @app.route('/api/my_analysis/simple_regression')
 @login_required
 def my_simple_regression():
@@ -344,7 +283,7 @@ def my_simple_regression():
         result = UserDataAnalyzer.linear_regression_simple(expenses)
         return jsonify(result)
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e), 'success': False})
 
 @app.route('/api/my_analysis/multiple_regression')
 @login_required
@@ -355,7 +294,7 @@ def my_multiple_regression():
         result = UserDataAnalyzer.linear_regression_multiple(expenses)
         return jsonify(result)
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e), 'success': False})
 
 @app.route('/api/my_analysis/pca')
 @login_required
@@ -366,7 +305,7 @@ def my_pca():
         result = UserDataAnalyzer.pca_analysis(expenses)
         return jsonify(result)
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e), 'success': False})
 
 @app.route('/api/my_analysis/supervised')
 @login_required
@@ -377,7 +316,7 @@ def my_supervised():
         result = UserDataAnalyzer.supervised_classification(expenses)
         return jsonify(result)
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e), 'success': False})
 
 @app.route('/api/my_analysis/unsupervised')
 @login_required
@@ -388,7 +327,7 @@ def my_unsupervised():
         result = UserDataAnalyzer.unsupervised_classification(expenses)
         return jsonify(result)
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({'error': str(e), 'success': False})
 
 @app.route('/api/my_analysis/advice')
 @login_required
@@ -397,9 +336,9 @@ def my_advice():
         user = User.query.get(session['user_id'])
         expenses = Expense.query.filter_by(user_id=user.id).all()
         result = UserDataAnalyzer.get_forecast_advice(expenses)
-        return jsonify(result)
+        return jsonify(result if result else [])
     except Exception as e:
-        return jsonify({'error': str(e), 'advice': []})
+        return jsonify([])
 
 @app.route('/api/my_analysis/stats')
 @login_required
@@ -408,11 +347,11 @@ def my_stats():
         user = User.query.get(session['user_id'])
         expenses = Expense.query.filter_by(user_id=user.id).all()
         result = UserDataAnalyzer.get_statistics(expenses)
-        return jsonify(result if result else {'error': 'Pas de données'})
+        return jsonify(result if result else {})
     except Exception as e:
-        return jsonify({'error': str(e)})
+        return jsonify({})
     
-    
+
 # Création des tables et données de test
 with app.app_context():
     db.create_all()
