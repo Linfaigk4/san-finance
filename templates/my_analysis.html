@@ -12,6 +12,46 @@
     .nav-tabs .nav-link.active { background: linear-gradient(135deg, #6a1b9a, #9c27b0); color: white; border: none; }
     .tab-pane { animation: fadeIn 0.3s ease-in; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Correction pour les onglets */
+.nav-tabs {
+    position: relative;
+    z-index: 10;
+    background: white;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 10px 0;
+}
+
+.nav-tabs .nav-link {
+    background: #f5f5f5;
+    border-radius: 25px;
+    padding: 10px 20px;
+    margin: 0;
+    border: 1px solid #ddd;
+    color: #6a1b9a;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.nav-tabs .nav-link:hover {
+    background: #e8e8e8;
+    transform: translateY(-2px);
+}
+
+.nav-tabs .nav-link.active {
+    background: linear-gradient(135deg, #6a1b9a, #9c27b0);
+    color: white;
+    border: none;
+}
+
+/* Pour les petits écrans */
+@media (max-width: 768px) {
+    .nav-tabs .nav-link {
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+}
 </style>
 
 <div class="row">
@@ -59,7 +99,7 @@
                     <div class="tab-pane fade show active" id="tab1" role="tabpanel">
                         <div class="card">
                             <div class="card-body">
-                                <h5>📈 Régression Linéaire Simple</h5>
+                                <h5> Régression Linéaire Simple</h5>
                                 <p>Prédiction de l'évolution de vos dépenses dans le temps</p>
                                 <div id="simpleResult" class="result-box">Chargement...</div>
                                 <div id="simpleChart" class="chart-container"></div>
@@ -74,7 +114,7 @@
                     <div class="tab-pane fade" id="tab2" role="tabpanel">
                         <div class="card">
                             <div class="card-body">
-                                <h5>📊 Régression Linéaire Multiple</h5>
+                                <h5> Régression Linéaire Multiple</h5>
                                 <p>Impact des différents facteurs (jour, mois, weekend) sur vos dépenses</p>
                                 <div id="multipleResult" class="result-box">Chargement...</div>
                                 <div id="multipleChart" class="chart-container"></div>
@@ -89,7 +129,7 @@
                     <div class="tab-pane fade" id="tab3" role="tabpanel">
                         <div class="card">
                             <div class="card-body">
-                                <h5>🎯 Analyse en Composantes Principales (PCA)</h5>
+                                <h5>x Analyse en Composantes Principales (PCA)</h5>
                                 <p>Réduction de dimensionnalité pour visualiser vos patterns de dépenses</p>
                                 <div id="pcaResult" class="result-box">Chargement...</div>
                                 <div id="pcaChart" class="chart-container"></div>
@@ -104,7 +144,7 @@
                     <div class="tab-pane fade" id="tab4" role="tabpanel">
                         <div class="card">
                             <div class="card-body">
-                                <h5>🧠 Classification Supervisée (Random Forest)</h5>
+                                <h5> Classification Supervisée (Random Forest)</h5>
                                 <p>Prédiction automatique de la catégorie de vos dépenses</p>
                                 <div id="supervisedResult" class="result-box">Chargement...</div>
                                 <div id="supervisedChart" class="chart-container"></div>
@@ -119,7 +159,7 @@
                     <div class="tab-pane fade" id="tab5" role="tabpanel">
                         <div class="card">
                             <div class="card-body">
-                                <h5>🔍 Classification Non-Supervisée (KMeans)</h5>
+                                <h5> Classification Non-Supervisée (KMeans)</h5>
                                 <p>Regroupement automatique de vos dépenses en clusters similaires</p>
                                 <div id="unsupervisedResult" class="result-box">Chargement...</div>
                                 <div id="unsupervisedChart" class="chart-container"></div>
@@ -183,19 +223,19 @@ function loadSimpleRegression() {
     
     $.get('/api/my_analysis/simple_regression', function(data) {
         if (data.error) {
-            $('#simpleResult').html(`<div class="alert alert-warning">⚠️ ${data.error}</div>`);
+            $('#simpleResult').html(`<div class="alert alert-warning"> ${data.error}</div>`);
             return;
         }
         
         if (!data.success && data.error) {
-            $('#simpleResult').html(`<div class="alert alert-warning">⚠️ ${data.error}</div>`);
+            $('#simpleResult').html(`<div class="alert alert-warning"> ${data.error}</div>`);
             return;
         }
         
         let trendHtml = '';
         if (data.trend) {
             let trendClass = data.trend == 'hausse' ? 'badge bg-danger' : (data.trend == 'baisse' ? 'badge bg-success' : 'badge bg-secondary');
-            let trendText = data.trend == 'hausse' ? '📈 En hausse' : (data.trend == 'baisse' ? '📉 En baisse' : '➡️ Stable');
+            let trendText = data.trend == 'hausse' ? ' En hausse' : (data.trend == 'baisse' ? ' En baisse' : ' Stable');
             trendHtml = `<span class="${trendClass}">${trendText}</span>`;
         }
         
@@ -222,7 +262,7 @@ function loadSimpleRegression() {
         `;
         
         if (data.future_predictions) {
-            html += `<hr><p><strong>🔮 Prévisions 7 jours:</strong> ${data.future_predictions.map(p => p.toFixed(2) + '€').join(' → ')}</p>`;
+            html += `<hr><p><strong> Prévisions 7 jours:</strong> ${data.future_predictions.map(p => p.toFixed(2) + '€').join(' → ')}</p>`;
         }
         
         $('#simpleResult').html(html);
@@ -258,7 +298,7 @@ function loadSimpleRegression() {
             });
         }
     }).fail(function() {
-        $('#simpleResult').html('<div class="alert alert-danger">❌ Erreur de connexion au serveur</div>');
+        $('#simpleResult').html('<div class="alert alert-danger"> Erreur de connexion au serveur</div>');
     });
 }
 
@@ -268,7 +308,7 @@ function loadMultipleRegression() {
     
     $.get('/api/my_analysis/multiple_regression', function(data) {
         if (data.error) {
-            $('#multipleResult').html(`<div class="alert alert-warning">⚠️ ${data.error}</div>`);
+            $('#multipleResult').html(`<div class="alert alert-warning"> ${data.error}</div>`);
             return;
         }
         
@@ -286,7 +326,7 @@ function loadMultipleRegression() {
         `;
         
         if (data.coefficients) {
-            html += `<hr><p><strong>📊 Impact des facteurs:</strong></p><ul>`;
+            html += `<hr><p><strong> Impact des facteurs:</strong></p><ul>`;
             for (const [k, v] of Object.entries(data.coefficients)) {
                 let impact = v > 0 ? `+${v.toFixed(2)}€` : `${v.toFixed(2)}€`;
                 html += `<li><strong>${k}:</strong> ${impact}</li>`;
@@ -313,7 +353,7 @@ function loadMultipleRegression() {
             });
         }
     }).fail(function() {
-        $('#multipleResult').html('<div class="alert alert-danger">❌ Erreur de connexion</div>');
+        $('#multipleResult').html('<div class="alert alert-danger"> Erreur de connexion</div>');
     });
 }
 
@@ -323,7 +363,7 @@ function loadPCA() {
     
     $.get('/api/my_analysis/pca', function(data) {
         if (data.error) {
-            $('#pcaResult').html(`<div class="alert alert-warning">⚠️ ${data.error}</div>`);
+            $('#pcaResult').html(`<div class="alert alert-warning"> ${data.error}</div>`);
             return;
         }
         
@@ -339,7 +379,7 @@ function loadPCA() {
                 </div>
             </div>
             <hr>
-            <p><strong>✅ Réduction de dimensionnalité:</strong> 5 dimensions → 2 dimensions</p>
+            <p><strong> Réduction de dimensionnalité:</strong> 5 dimensions → 2 dimensions</p>
         `;
         $('#pcaResult').html(html);
         
@@ -370,7 +410,7 @@ function loadPCA() {
             $('#pcaChart').html('<div class="alert alert-info">Pas assez de points pour la visualisation PCA</div>');
         }
     }).fail(function() {
-        $('#pcaResult').html('<div class="alert alert-danger">❌ Erreur de connexion</div>');
+        $('#pcaResult').html('<div class="alert alert-danger"> Erreur de connexion</div>');
     });
 }
 
@@ -380,7 +420,7 @@ function loadSupervised() {
     
     $.get('/api/my_analysis/supervised', function(data) {
         if (data.error) {
-            $('#supervisedResult').html(`<div class="alert alert-warning">⚠️ ${data.error}</div>`);
+            $('#supervisedResult').html(`<div class="alert alert-warning"> ${data.error}</div>`);
             return;
         }
         
@@ -393,14 +433,14 @@ function loadSupervised() {
                     <div class="metric-value">${accuracyPercent}%</div>
                     <div class="metric-label">Précision du modèle</div>
                     <span class="badge bg-${accuracyColor} mt-2">
-                        ${(data.accuracy || 0) > 0.7 ? '✅ Excellent' : ((data.accuracy || 0) > 0.5 ? '⚠️ Bon' : '❌ À améliorer')}
+                        ${(data.accuracy || 0) > 0.7 ? ' Excellent' : ((data.accuracy || 0) > 0.5 ? ' Bon' : ' À améliorer')}
                     </span>
                 </div>
             </div>
         `;
         
         if (data.feature_importance) {
-            html += `<hr><p><strong>📊 Importance des facteurs pour la prédiction:</strong></p><ul>`;
+            html += `<hr><p><strong> Importance des facteurs pour la prédiction:</strong></p><ul>`;
             for (const [k, v] of Object.entries(data.feature_importance)) {
                 html += `<li><strong>${k}:</strong> ${(v * 100).toFixed(1)}%</li>`;
             }
@@ -425,7 +465,7 @@ function loadSupervised() {
             });
         }
     }).fail(function() {
-        $('#supervisedResult').html('<div class="alert alert-danger">❌ Erreur de connexion</div>');
+        $('#supervisedResult').html('<div class="alert alert-danger"> Erreur de connexion</div>');
     });
 }
 
@@ -435,7 +475,7 @@ function loadUnsupervised() {
     
     $.get('/api/my_analysis/unsupervised', function(data) {
         if (data.error) {
-            $('#unsupervisedResult').html(`<div class="alert alert-warning">⚠️ ${data.error}</div>`);
+            $('#unsupervisedResult').html(`<div class="alert alert-warning"> ${data.error}</div>`);
             return;
         }
         
@@ -457,7 +497,7 @@ function loadUnsupervised() {
         `;
         
         if (data.cluster_stats && data.cluster_stats.length > 0) {
-            html += `<hr><p><strong>📊 Profils des clusters:</strong></p><div class="row">`;
+            html += `<hr><p><strong> Profils des clusters:</strong></p><div class="row">`;
             for (let c of data.cluster_stats) {
                 html += `
                     <div class="col-md-4 mb-2">
@@ -491,7 +531,7 @@ function loadUnsupervised() {
             });
         }
     }).fail(function() {
-        $('#unsupervisedResult').html('<div class="alert alert-danger">❌ Erreur de connexion</div>');
+        $('#unsupervisedResult').html('<div class="alert alert-danger"> Erreur de connexion</div>');
     });
 }
 
